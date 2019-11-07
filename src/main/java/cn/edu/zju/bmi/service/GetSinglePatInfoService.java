@@ -77,8 +77,9 @@ public class GetSinglePatInfoService {
             String visitType = patientVisit.getKey().getVisitType();
             String visitID = patientVisit.getKey().getVisitID();
             String hospitalCode_ = patientVisit.getKey().getHospitalCode();
+            String hospitalName = hospitalMapRepository.findHospitalMapByHospitalCode(hospitalCode_).getHospitalName();
             VisitInTrajectory singleVisit = new VisitInTrajectory(visitNo, admissionTime, hospitalCode_, visitType,
-                    visitID);
+                    visitID, hospitalName);
             visitInTrajectories.add(singleVisit);
         }
         return visitInTrajectories;

@@ -17,8 +17,6 @@ plugins {
 group 'cn.edu.zju.bmi'
 version '1.0-SNAPSHOT'
 
-sourceCompatibility = 1.8
-
 repositories {
     mavenCentral()
 }
