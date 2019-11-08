@@ -1,4 +1,5 @@
 package cn.edu.zju.bmi.controller;
+import cn.edu.zju.bmi.support.PathName;
 import cn.edu.zju.bmi.entity.DAO.User;
 import cn.edu.zju.bmi.entity.POJO.auth.ApiResponse;
 import cn.edu.zju.bmi.entity.POJO.auth.JwtAuthenticationResponse;
@@ -23,7 +24,7 @@ import javax.validation.Valid;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping(PathName.AUTH)
 public class AuthController {
     private AuthenticationManager authenticationManager;
     private UserRepository userRepository;
@@ -39,7 +40,7 @@ public class AuthController {
         this.tokenProvider = tokenProvider;
     }
 
-    @PostMapping("/signin")
+    @PostMapping(PathName.LOGIN)
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
         Authentication authentication = authenticationManager.authenticate(
@@ -55,7 +56,7 @@ public class AuthController {
         return ResponseEntity.ok(new JwtAuthenticationResponse(jwt));
     }
 
-    @PostMapping("/signup")
+    @PostMapping(PathName.SIGNUP)
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignUpRequest signUpRequest) {
         if(userRepository.existsByUserName(signUpRequest.getUserName())) {
             return new ResponseEntity<>(new ApiResponse(false, "account name is already taken!"),
@@ -63,12 +64,12 @@ public class AuthController {
         }
 
         if(userRepository.existsById(signUpRequest.getUid())) {
-            return new ResponseEntity<>(new ApiResponse(false, "Email Address already in use!"),
+            return new ResponseEntity<>(new ApiResponse(false, "uid already in use!"),
                     HttpStatus.BAD_REQUEST);
         }
 
         // Creating user's account
-        User user = new User(signUpRequest.getUid(), signUpRequest.getUserName(),
+        User user = new User(signUpRequest.getUid(), signUpRequest.getUserName(),signUpRequest.getRealName(),
                 signUpRequest.getPassword(), signUpRequest.getRole());
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));

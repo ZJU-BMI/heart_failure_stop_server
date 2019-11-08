@@ -5,20 +5,20 @@ import cn.edu.zju.bmi.service.GetSinglePatInfoService;
 import cn.edu.zju.bmi.support.ParameterName;
 import cn.edu.zju.bmi.support.PathName;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.security.RolesAllowed;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping(path= PathName.TRAJECTORY_ANALYSIS_DATA)
-@Secured("USER")
-public class DataAccessController {
+@RolesAllowed("ROLE_USER")
+public class PatientDataAccessController {
     private GetSinglePatInfoService getSinglePatInfoService;
 
     @Autowired
-    public DataAccessController(GetSinglePatInfoService getSinglePatInfoService){
+    public PatientDataAccessController(GetSinglePatInfoService getSinglePatInfoService){
         this.getSinglePatInfoService = getSinglePatInfoService;
     }
 

@@ -12,6 +12,8 @@ import java.util.Date;
 /**
  * Created by rajeevkumarsingh on 19/08/17.
  * revised by sunzhoujian on 07/11/19
+ * 在登录成功后，会给一个Token作为访问标识，此处即为Token的生成器
+ * 不难发现Token的生成和User ID，时间和我们预设的secret有关
  */
 @Component
 public class JwtTokenProvider {

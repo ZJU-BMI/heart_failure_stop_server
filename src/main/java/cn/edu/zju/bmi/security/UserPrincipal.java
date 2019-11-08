@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+// 用于给CustomUserDetailService使用
+// 注意，Service是给定一个标准的访问数据库的User表的服务，但是User表可能和我们的预期不一样
+// 因此此处提炼了一个最基本的UserDetail接口，返回给AuthenticationManager用于比较
 public class UserPrincipal implements UserDetails {
     private long id;
     private String userName;
@@ -30,7 +33,7 @@ public class UserPrincipal implements UserDetails {
     public static UserPrincipal create(User user) {
         // 我们并未设计一个人员存在多个角色的情况。此处的写法仅仅是为适配Spring和为未来一个人身兼多个角色保留拓展能力
         List<String> roleList = Arrays.asList(user.getRole().split(","));
-        List<GrantedAuthority> authorities = roleList.stream().map(role -> new SimpleGrantedAuthority(role)
+        List<GrantedAuthority> authorities = roleList.stream().map(SimpleGrantedAuthority::new
         ).collect(Collectors.toList());
 
         return new UserPrincipal(

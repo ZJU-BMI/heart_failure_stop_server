@@ -15,6 +15,7 @@ import java.io.IOException;
  * Created by rajeevkumarsingh on 07/12/17.
  */
 @Component
+// 用于返回未经验证时的访问时附带的错误信息
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationEntryPoint.class);

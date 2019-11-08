@@ -5,8 +5,7 @@ public class PathName {
     public static final String INDEX = "/index";
 
     //Trajectory Analysis
-    public static final String  TRAJECTORY_ANALYSIS_ROOT = "/trajectory_analysis";
-    public static final String TRAJECTORY_ANALYSIS_DATA = "/data/trajectory_analysis";
+    public static final String TRAJECTORY_ANALYSIS_DATA = "/data/trajectoryAnalysis";
     public static final String TRAJECTORY_ANALYSIS_DATA_UNIFIED_PATIENT_ID = "/unifiedPatientID";
     public static final String TRAJECTORY_ANALYSIS_DATA_BASIC_INFO ="/basicInfo";
     public static final String TRAJECTORY_ANALYSIS_DATA_TRAJECTORY ="/trajectory";
@@ -17,7 +16,12 @@ public class PathName {
     public static final String TRAJECTORY_ANALYSIS_DATA_VITAL_SIGN ="/vitalSign";
     public static final String TRAJECTORY_ANALYSIS_DATA_EXAM ="/exam";
 
-    // html
-    public static final String INDEX_HTML = "INDEX";
-    public static final String TRAJECTORY_ANALYSIS_HTML = "trajectory_analysis";
+    // Auth
+    public static final String AUTH = "/authentic";
+    public static final String LOGIN = "/login";
+    public static final String SIGNUP = "/signup";
+
+    // user info
+    public static final String USER_INFO_DATA = "/data/userInfo";
+    public static final String USER_INFO = "/userInfo";
 }

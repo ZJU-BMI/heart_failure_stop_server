@@ -15,6 +15,8 @@ public class User {
     private Long id;
     @Column(name = "user_name")
     private String userName;
+    @Column(name = "real_name")
+    private String realName;
     @Column(name = "password")
     private String password;
     @Column(name = "role")
