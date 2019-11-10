@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import javax.validation.Valid;
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping(PathName.AUTH)
@@ -41,7 +42,7 @@ public class AuthController {
     }
 
     @PostMapping(PathName.LOGIN)
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> userLogin(@Valid @RequestBody LoginRequest loginRequest) {
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -63,14 +64,16 @@ public class AuthController {
                     HttpStatus.BAD_REQUEST);
         }
 
-        if(userRepository.existsById(signUpRequest.getUid())) {
-            return new ResponseEntity<>(new ApiResponse(false, "uid already in use!"),
-                    HttpStatus.BAD_REQUEST);
-        }
+        List<User> list = userRepository.findTop1ByOrderByIdDesc();
+        Long uid = null;
+        if (list.size()==0)
+            uid = 1l;
+        else
+            uid = list.get(0).getId()+1;
 
         // Creating user's account
-        User user = new User(signUpRequest.getUid(), signUpRequest.getUserName(),signUpRequest.getRealName(),
-                signUpRequest.getPassword(), signUpRequest.getRole());
+        User user = new User(uid, signUpRequest.getUserName(),signUpRequest.getRealName(),
+                signUpRequest.getPassword(), "TBC");
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
