@@ -14,11 +14,11 @@ import java.util.Map;
 @RestController
 @RequestMapping(path= PathName.TRAJECTORY_ANALYSIS_DATA)
 @RolesAllowed("ROLE_USER")
-public class PatientDataAccessController {
+public class TrajectoryAnalysisController {
     private GetSinglePatInfoService getSinglePatInfoService;
 
     @Autowired
-    public PatientDataAccessController(GetSinglePatInfoService getSinglePatInfoService){
+    public TrajectoryAnalysisController(GetSinglePatInfoService getSinglePatInfoService){
         this.getSinglePatInfoService = getSinglePatInfoService;
     }
 

@@ -1,4 +1,5 @@
 package cn.edu.zju.bmi.controller;
+import cn.edu.zju.bmi.support.ParameterName;
 import cn.edu.zju.bmi.support.PathName;
 import cn.edu.zju.bmi.entity.DAO.User;
 import cn.edu.zju.bmi.entity.POJO.auth.ApiResponse;
@@ -15,10 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import javax.validation.Valid;
 import java.net.URI;
@@ -39,6 +37,15 @@ public class AuthController {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
+    }
+
+    @GetMapping(PathName.SIGNUP_USER_EXIST_TEST)
+    public String userExistTest(@RequestParam(ParameterName.USER_NAME) String userName) {
+        boolean isExist = userRepository.existsByUserName(userName);
+        if(isExist)
+            return "true";
+        else
+            return "false";
     }
 
     @PostMapping(PathName.LOGIN)
