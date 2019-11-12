@@ -46,13 +46,14 @@ public class GetSinglePatInfoService {
         this.hospitalMapRepository = hospitalMapRepository;
     }
 
-    public String getUnifiedPatientID(String patientID, String hospitalCode){
+    public Map<String, String> getUnifiedPatientID(String patientID, String hospitalCode){
         IdMapping idMapping = idMappingRepository.findIdMappingByHospitalPatIDAndHospitalCode(patientID, hospitalCode);
-        String unifiedPatientID = ParameterName.NO_UNIFIED_PATIENT_ID_FOUND;
-        if(idMapping != null){
-            unifiedPatientID = idMapping.getUnifiedPatientID();
-        }
-        return unifiedPatientID;
+        Map<String, String> unifiedPatientMap = new TreeMap<>();
+        if(idMapping != null)
+            unifiedPatientMap.put(ParameterName.UNIFIED_PATIENT_ID, idMapping.getUnifiedPatientID());
+        else
+            unifiedPatientMap.put(ParameterName.UNIFIED_PATIENT_ID, ParameterName.NO_UNIFIED_PATIENT_ID_FOUND);
+        return unifiedPatientMap;
     }
 
     public PatientBasicInfo getPatientBasicInfo(String unifiedPatientID){
@@ -63,7 +64,7 @@ public class GetSinglePatInfoService {
         String birthday = sdf1.format(patGeneralInfo.getBirthday());
 
         String ethnicGroup = patGeneralInfo.getEthnicGroup();
-        return new PatientBasicInfo(patName, sex, birthday, ethnicGroup);
+        return new PatientBasicInfo(patName, birthday, sex, ethnicGroup);
     }
 
     public List<VisitInTrajectory> getPatientTrajectory(String unifiedPatientID){

@@ -23,8 +23,8 @@ public class TrajectoryAnalysisController {
     }
 
     @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_UNIFIED_PATIENT_ID)
-    public String getUnifiedPatientID(@RequestParam(ParameterName.PATIENT_ID) String patientID,
-                                      @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode){
+    public Map<String, String> getUnifiedPatientID(@RequestParam(ParameterName.PATIENT_ID) String patientID,
+                                                   @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode){
         return getSinglePatInfoService.getUnifiedPatientID(patientID, hospitalCode);
     }
 
