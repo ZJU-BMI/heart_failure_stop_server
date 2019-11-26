@@ -46,14 +46,6 @@ public class TrajectoryAnalysisController {
         return getSinglePatInfoService.getVisitDetailedInfo(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
-    @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_VISIT_BRIEF_INFO)
-    public VisitBriefInfo getVisitBriefInfo(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
-                                            @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
-                                            @RequestParam(ParameterName.VISIT_TYPE) String visitType,
-                                            @RequestParam(ParameterName.VISIT_ID) String visitID){
-        return getSinglePatInfoService.getVisitBriefInfo(unifiedPatientID, hospitalCode, visitType, visitID);
-    }
-
     @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_LAB_TEST)
     public Map<String, List<LabTestResult>> getLabTest(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
                                                        @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
@@ -62,12 +54,12 @@ public class TrajectoryAnalysisController {
         return getSinglePatInfoService.getLabTest(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
-    @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_MEDICAL_ORAL_INTERVENTION)
-    public Map<String, List<MedicalOralIntervention>> getMedicalOralIntervention(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
-                                                                                 @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
-                                                                                 @RequestParam(ParameterName.VISIT_TYPE) String visitType,
-                                                                                 @RequestParam(ParameterName.VISIT_ID) String visitID){
-        return getSinglePatInfoService.getMedicalOralIntervention(unifiedPatientID, hospitalCode, visitType, visitID);
+    @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_ORDER)
+    public Map<String, List<Order>> getOrder(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
+                                             @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
+                                             @RequestParam(ParameterName.VISIT_TYPE) String visitType,
+                                             @RequestParam(ParameterName.VISIT_ID) String visitID){
+        return getSinglePatInfoService.getOrder(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
     @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_VITAL_SIGN)

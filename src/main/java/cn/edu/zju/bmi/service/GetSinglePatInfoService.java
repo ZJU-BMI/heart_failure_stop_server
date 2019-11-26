@@ -73,38 +73,16 @@ public class GetSinglePatInfoService {
         List<PatientVisit> validVisit = patientVisitRepository.findAllByKeyUnifiedPatientID(unifiedPatientID);
         for(int i = 0; i < validVisit.size(); i++){
             PatientVisit patientVisit = validVisit.get(i);
-            String visitNo = String.valueOf(i);
             String admissionTime = sdf1.format(patientVisit.getAdmissionDateTime());
             String visitType = patientVisit.getKey().getVisitType();
             String visitID = patientVisit.getKey().getVisitID();
             String hospitalCode_ = patientVisit.getKey().getHospitalCode();
             String hospitalName = hospitalMapRepository.findHospitalMapByHospitalCode(hospitalCode_).getHospitalName();
-            VisitInTrajectory singleVisit = new VisitInTrajectory(visitNo, admissionTime, hospitalCode_, visitType,
+            VisitInTrajectory singleVisit = new VisitInTrajectory(admissionTime, hospitalCode_, visitType,
                     visitID, hospitalName);
             visitInTrajectories.add(singleVisit);
         }
         return visitInTrajectories;
-    }
-
-    public VisitBriefInfo getVisitBriefInfo(String unifiedPatientID, String hospitalCode, String visitType,
-                                                  String visitID){
-        PatientVisit patientVisit = patientVisitRepository.
-                findPatientVisitByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(
-                        unifiedPatientID, visitID, visitType, hospitalCode);
-        String admissionTime = sdf2.format(patientVisit.getAdmissionDateTime());
-        String dischargeTime = sdf2.format(patientVisit.getDischargeDateTime());
-        String hospitalName = hospitalMapRepository.findHospitalMapByHospitalCode(hospitalCode).getHospitalName();
-        String deathFlag = patientVisit.getDeathFlag();
-
-        List<Diagnosis> mainDiagnosis =
-                diagnosisRepository.findAllByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCodeAndKeyDiagnosisTypeOrderByKeyDiagnosisNo(
-                        unifiedPatientID, visitID, visitType, hospitalCode, "3");
-        String mainDiagnosisStr = "无主诊断";
-        if (mainDiagnosis.size() > 0)
-            mainDiagnosisStr = mainDiagnosis.get(0).getDiagnosisDesc();
-
-        String symptom = "No Data";
-        return new VisitBriefInfo(admissionTime, dischargeTime, hospitalName, mainDiagnosisStr, symptom, deathFlag);
     }
 
     public VisitDetailedInfo getVisitDetailedInfo(String unifiedPatientID, String hospitalCode, String visitType,
@@ -138,9 +116,12 @@ public class GetSinglePatInfoService {
         String hospitalName = getHospitalName(hospitalCode);
         String admissionTime = sdf1.format(visitInfo.getAdmissionDateTime());
         String dischargeTime = sdf1.format(visitInfo.getDischargeDateTime());
+        String deathFlag = visitInfo.getDeathFlag();
+        String symptom = "当前暂无此数据";
 
         return new VisitDetailedInfo (patName, sex, age, hospitalName, visitType, visitID,
-                admissionTime, dischargeTime, mainDiagnosisStrList, operationStrList, otherDiagnosisStrList);
+                admissionTime, dischargeTime, mainDiagnosisStrList, operationStrList, otherDiagnosisStrList,
+                deathFlag, symptom);
     }
 
     public Map<String, List<LabTestResult>> getLabTest(String unifiedPatientID, String hospitalCode, String visitType,
@@ -163,11 +144,12 @@ public class GetSinglePatInfoService {
         return labTestMap;
     }
 
-    public Map<String, List<MedicalOralIntervention>> getMedicalOralIntervention(String unifiedPatientID, String hospitalCode, String visitType,
+    public Map<String, List<Order>> getOrder(String unifiedPatientID, String hospitalCode, String visitType,
                                                                                  String visitID){
-        List<Orders> medicineOrderList = ordersRepository.findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCodeAndOrderClass(
-                unifiedPatientID, visitID, visitType, hospitalCode, "A");
-        Map<String, List<MedicalOralIntervention>> ordersMap = new HashMap<>();
+        List<Orders> medicineOrderList = ordersRepository.
+                findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(
+                unifiedPatientID, visitID, visitType, hospitalCode);
+        Map<String, List<Order>> ordersMap = new HashMap<>();
         for (Orders orders : medicineOrderList){
             String itemName = orders.getOrderText();
             if (!ordersMap.containsKey(itemName))
@@ -176,9 +158,9 @@ public class GetSinglePatInfoService {
             String endTime = sdf2.format(orders.getStopDateTime());
             String unit = orders.getDosageUnit();
             String dosage = orders.getDosage();
-            String dosageWithUnit = dosage+"_"+unit;
             String frequency = orders.getFrequency();
-            MedicalOralIntervention order = new MedicalOralIntervention(itemName, dosageWithUnit, frequency, startTime, endTime);
+            String orderClass = orders.getOrderClass();
+            Order order = new Order(itemName, orderClass, dosage, unit, frequency, startTime, endTime);
             ordersMap.get(itemName).add(order);
         }
         return ordersMap;

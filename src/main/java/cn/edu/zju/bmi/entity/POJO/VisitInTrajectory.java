@@ -5,7 +5,6 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class VisitInTrajectory {
-    private String visitNo;
     private String admissionTime;
     private String hospitalCode;
     private String visitType;

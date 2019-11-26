@@ -39,7 +39,7 @@ public class TestTensorflowController {
 
         HttpEntity<String> entity = new HttpEntity<>(requestBodyString, headers);
 
-        String url = "http://172.16.123.175:8501/v1/models/mnist:predict";
+        String url = "http://localhost:8501/v1/models/mnist:predict";
 
         ResponseEntity<String> answer = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 

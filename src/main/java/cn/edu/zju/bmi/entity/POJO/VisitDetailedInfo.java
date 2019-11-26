@@ -18,10 +18,12 @@ public class VisitDetailedInfo {
     private String treatResult;
     private List<String> operation;
     private List<String> otherDiagnosis;
+    private String deathFlag;
+    private String symptom;
 
     public VisitDetailedInfo(String name, String sex, String age, String hospitalName, String visitType, String visitID,
                              String admissionTime, String dischargeTime, List<String> mainDiagnosis,
-                             List<String> operation, List<String> otherDiagnosis){
+                             List<String> operation, List<String> otherDiagnosis,String deathFlag, String symptom){
         this.patientName = name;
         this.sex = sex;
         this.age = age;
@@ -31,8 +33,9 @@ public class VisitDetailedInfo {
         this.admissionTime = admissionTime;
         this.dischargeTime = dischargeTime;
         this.mainDiagnosis = mainDiagnosis;
-        this.treatResult = "目前未算";
         this.operation = operation;
         this.otherDiagnosis = otherDiagnosis;
+        this.deathFlag = deathFlag;
+        this.symptom = symptom;
     }
 }
