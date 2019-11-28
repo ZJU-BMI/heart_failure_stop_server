@@ -4,7 +4,6 @@ import cn.edu.zju.bmi.entity.DAO.*;
 import cn.edu.zju.bmi.entity.DAO.Exam;
 import cn.edu.zju.bmi.entity.POJO.*;
 import cn.edu.zju.bmi.repository.*;
-import cn.edu.zju.bmi.support.EchoCardioElements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -71,8 +70,7 @@ public class GetSinglePatInfoService {
         List<VisitInTrajectory> visitInTrajectories = new ArrayList<>();
 
         List<PatientVisit> validVisit = patientVisitRepository.findAllByKeyUnifiedPatientID(unifiedPatientID);
-        for(int i = 0; i < validVisit.size(); i++){
-            PatientVisit patientVisit = validVisit.get(i);
+        for (PatientVisit patientVisit : validVisit) {
             String admissionTime = sdf1.format(patientVisit.getAdmissionDateTime());
             String visitType = patientVisit.getKey().getVisitType();
             String visitID = patientVisit.getKey().getVisitID();
@@ -207,24 +205,6 @@ public class GetSinglePatInfoService {
     private String getHospitalName(String hospitalCode){
         HospitalMap hospitalMap = hospitalMapRepository.findHospitalMapByHospitalCode(hospitalCode);
         return hospitalMap.getHospitalName();
-    }
-
-    // TODO
-    private List<EchoCardioElements> getStructuredEchoCardioGramOfVisit(String unifiedPatientID, String hospitalCode, String visitType,
-                                                                        String visitID){
-        List<Exam> examList =
-                examRepository.findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(
-                        unifiedPatientID, visitID, visitType, hospitalCode);
-        return echoCardioGramStructuralize(examList);
-    }
-
-    // TODO
-    private List<EchoCardioElements> echoCardioGramStructuralize(List<Exam> examList){
-        List<EchoCardioElements> echoCardioEleList = new ArrayList<>();
-        for (Exam exam : examList)
-            System.out.println(exam);
-            echoCardioEleList.add(new EchoCardioElements());
-        return echoCardioEleList;
     }
 }
 

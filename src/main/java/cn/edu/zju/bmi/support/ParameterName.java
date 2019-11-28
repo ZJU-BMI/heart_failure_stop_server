@@ -9,4 +9,6 @@ public class ParameterName {
     public static final String NO_UNIFIED_PATIENT_ID_FOUND = "noUnifiedPatientIDFound";
     public static final String USER_NAME = "userName";
     public static final String PREDICT_TASK = "predictTask";
+    public static final String VISIT_NO = "visitNo";
+
 }

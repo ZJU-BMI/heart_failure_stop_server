@@ -5,7 +5,9 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class TwoElementTuple <A, B> {
+public class ThreeElementTuple <A, B, C> {
     private A a;
     private B b;
+    private C c;
 }
+

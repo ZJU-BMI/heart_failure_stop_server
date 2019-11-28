@@ -10,6 +10,9 @@ public interface DiagnosisRepository extends JpaRepository<Diagnosis, DiagnosisP
     List<Diagnosis> findTop2ByOrderByKeyUnifiedPatientID();
 
     List<Diagnosis> findAllByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCodeAndKeyDiagnosisTypeOrderByKeyDiagnosisNo(
-            String key_unifiedPatientID, String key_visitID, String key_visitType, String key_hospitalCode, String diagnosisCode);
+            String unifiedPatientID, String visitID, String visitType, String hospitalCode, String diagnosisCode);
+
+    List<Diagnosis> findAllByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(
+            String unifiedPatientID, String visitID, String visitType, String hospitalCode);
 
 }
