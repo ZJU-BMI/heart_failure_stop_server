@@ -46,12 +46,28 @@ public class TrajectoryAnalysisController {
         return getSinglePatInfoService.getVisitDetailedInfo(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
-    @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_LAB_TEST)
-    public Map<String, List<LabTestResult>> getLabTest(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
-                                                       @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
-                                                       @RequestParam(ParameterName.VISIT_TYPE) String visitType,
-                                                       @RequestParam(ParameterName.VISIT_ID) String visitID){
+    @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_LAB_TEST_SINGLE_ITEM_IN_ONE_VISIT)
+    public List<LabTestResult> getLabTest(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
+                                          @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
+                                          @RequestParam(ParameterName.VISIT_TYPE) String visitType,
+                                          @RequestParam(ParameterName.VISIT_ID) String visitID,
+                                          @RequestParam(ParameterName.ITEM_NAME) String itemName){
+        return getSinglePatInfoService.getLabTest(unifiedPatientID, hospitalCode, visitType, visitID, itemName);
+    }
+
+    @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_LAB_TEST_SINGLE_VISIT)
+    public Map<String, List<LabTestResult>>
+        getLabTest(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
+                   @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
+                   @RequestParam(ParameterName.VISIT_TYPE) String visitType,
+                   @RequestParam(ParameterName.VISIT_ID) String visitID){
         return getSinglePatInfoService.getLabTest(unifiedPatientID, hospitalCode, visitType, visitID);
+    }
+
+    @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_LAB_TEST_SINGLE_ITEM_TRACE)
+    public List<LabTestResult> getLabTest(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
+                                          @RequestParam(ParameterName.ITEM_NAME) String itemName){
+        return getSinglePatInfoService.getLabTest(unifiedPatientID, itemName);
     }
 
     @GetMapping(value = PathName.TRAJECTORY_ANALYSIS_DATA_ORDER)
@@ -78,4 +94,8 @@ public class TrajectoryAnalysisController {
         return getSinglePatInfoService.getExamResult(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
+    @GetMapping(value = PathName.LAB_TEST_NAME_DICT)
+    public List<String> getLabTestNameList(){
+        return getSinglePatInfoService.getLabTestNameList();
+    }
 }

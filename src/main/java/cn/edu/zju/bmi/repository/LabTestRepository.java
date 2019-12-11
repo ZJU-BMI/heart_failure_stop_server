@@ -10,4 +10,8 @@ public interface LabTestRepository extends JpaRepository<LabTest, LabTestPrimary
                                                                                           String visitID,
                                                                                           String visitType,
                                                                                           String hospitalCode);
+    List<LabTest> findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCodeAndLabTestItemName(
+            String unifiedPatientID, String visitID, String visitType, String hospitalCode, String itemName);
+    List<LabTest> findByKeyUnifiedPatientIDAndLabTestItemName(
+            String unifiedPatientID, String itemName);
 }

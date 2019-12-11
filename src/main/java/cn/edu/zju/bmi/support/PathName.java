@@ -10,10 +10,13 @@ public class PathName {
     public static final String TRAJECTORY_ANALYSIS_DATA_BASIC_INFO ="/basicInfo";
     public static final String TRAJECTORY_ANALYSIS_DATA_TRAJECTORY ="/trajectory";
     public static final String TRAJECTORY_ANALYSIS_DATA_VISIT_DETAILED_INFO ="/visitDetailedInfo";
-    public static final String TRAJECTORY_ANALYSIS_DATA_LAB_TEST ="/labTest";
+    public static final String TRAJECTORY_ANALYSIS_DATA_LAB_TEST_SINGLE_VISIT ="/labTestSingleVisit";
+    public static final String TRAJECTORY_ANALYSIS_DATA_LAB_TEST_SINGLE_ITEM_IN_ONE_VISIT ="/labTestSingleItemInOneVisit";
+    public static final String TRAJECTORY_ANALYSIS_DATA_LAB_TEST_SINGLE_ITEM_TRACE ="/labTestSingleItemTrace";
     public static final String TRAJECTORY_ANALYSIS_DATA_ORDER ="/order";
     public static final String TRAJECTORY_ANALYSIS_DATA_VITAL_SIGN ="/vitalSign";
     public static final String TRAJECTORY_ANALYSIS_DATA_EXAM ="/exam";
+    public static final String LAB_TEST_NAME_DICT = "/labTestNameList";
 
     // Auth
     public static final String AUTH = "/backend/authentic";

@@ -6,7 +6,6 @@ import cn.edu.zju.bmi.entity.POJO.*;
 import cn.edu.zju.bmi.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -22,6 +21,7 @@ public class GetSinglePatInfoService {
     private ExamRepository examRepository;
     private IdMappingRepository idMappingRepository;
     private HospitalMapRepository hospitalMapRepository;
+    private LabTestNameRepository labTestNameRepository;
 
     private static SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy/MM/dd");
     private static SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy/MM/dd HH:mm");
@@ -31,7 +31,8 @@ public class GetSinglePatInfoService {
                                    OperationRepository operationRepository, OrdersRepository ordersRepository,
                                    PatientRepository patientRepository, VitalSignRepository vitalSignRepository,
                                    PatientVisitRepository patientVisitRepository, ExamRepository examRepository,
-                                   IdMappingRepository idMappingRepository, HospitalMapRepository hospitalMapRepository)
+                                   IdMappingRepository idMappingRepository, HospitalMapRepository hospitalMapRepository,
+                                   LabTestNameRepository labTestNameRepository)
     {
         this.diagnosisRepository = diagnosisRepository;
         this.labTestRepository = labTestRepository;
@@ -43,6 +44,7 @@ public class GetSinglePatInfoService {
         this.patientVisitRepository = patientVisitRepository;
         this.examRepository = examRepository;
         this.hospitalMapRepository = hospitalMapRepository;
+        this.labTestNameRepository = labTestNameRepository;
     }
 
     public Map<String, String> getUnifiedPatientID(String patientID, String hospitalCode){
@@ -128,18 +130,68 @@ public class GetSinglePatInfoService {
         List<LabTest> labTestList =
                 labTestRepository.findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(
                         unifiedPatientID, visitID, visitType, hospitalCode);
+        String hospitalName = hospitalMapRepository.findHospitalMapByHospitalCode(hospitalCode).getHospitalName();
+
         for (LabTest labTest : labTestList){
             String itemName = labTest.getLabTestItemName();
             if (!labTestMap.containsKey(itemName))
                 labTestMap.put(itemName, new ArrayList<>());
+            String result = labTest.getResult();
+            String unit = labTest.getUnits();
+            Date testTime = labTest.getExecuteDate();
+            LabTestResult labTestResult = new LabTestResult(itemName, result, unit, testTime,
+                    hospitalCode, visitType, visitID, hospitalName);
+            labTestMap.get(itemName).add(labTestResult);
+        }
 
+        for(String key: labTestMap.keySet()){
+            labTestMap.get(key).sort(
+                    Comparator.comparingLong(o -> o.getTestTime().getTime())
+            );
+        }
+        return labTestMap;
+    }
+
+    public List<LabTestResult> getLabTest(String unifiedPatientID, String itemName){
+        List<LabTest> labTestList =
+                labTestRepository.findByKeyUnifiedPatientIDAndLabTestItemName(
+                        unifiedPatientID, itemName);
+        List<LabTestResult> list = new ArrayList<>();
+
+        for (LabTest labTest : labTestList){
+            String result = labTest.getResult();
+            String unit = labTest.getUnits();
+            Date testTime = labTest.getExecuteDate();
+            String hospitalCode = labTest.getKey().getHospitalCode();
+            String hospitalName = hospitalMapRepository.findHospitalMapByHospitalCode(hospitalCode).getHospitalName();
+            String visitType = labTest.getKey().getVisitType();
+            String visitID = labTest.getKey().getVisitID();
+            LabTestResult labTestResult = new LabTestResult(itemName, result, unit, testTime,
+                    hospitalCode, visitType, visitID, hospitalName);
+            list.add(labTestResult);
+        }
+
+        list.sort(Comparator.comparingLong(o -> o.getTestTime().getTime()));
+        return list;
+    }
+
+    public List<LabTestResult> getLabTest(String unifiedPatientID, String hospitalCode, String visitType,
+                                          String visitID, String itemName){
+        List<LabTest> labTestList =
+                labTestRepository.findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCodeAndLabTestItemName(
+                        unifiedPatientID, visitID, visitType, hospitalCode, itemName);
+        List<LabTestResult> list = new ArrayList<>();
+
+        for (LabTest labTest : labTestList){
             String result = labTest.getResult();
             String unit = labTest.getUnits();
             Date testTime = labTest.getExecuteDate();
             LabTestResult labTestResult = new LabTestResult(itemName, result, unit, testTime);
-            labTestMap.get(itemName).add(labTestResult);
+            list.add(labTestResult);
         }
-        return labTestMap;
+
+        list.sort((o1, o2) -> Long.compare(o2.getTestTime().getTime(), o1.getTestTime().getTime()));
+        return list;
     }
 
     public Map<String, List<Order>> getOrder(String unifiedPatientID, String hospitalCode, String visitType,
@@ -205,6 +257,15 @@ public class GetSinglePatInfoService {
     private String getHospitalName(String hospitalCode){
         HospitalMap hospitalMap = hospitalMapRepository.findHospitalMapByHospitalCode(hospitalCode);
         return hospitalMap.getHospitalName();
+    }
+
+    public List<String> getLabTestNameList(){
+        List<LabTestNameDict> list = labTestNameRepository.findAll();
+        List<String> nameList = new ArrayList<>();
+        for(LabTestNameDict name: list)
+            nameList.add(name.getItemName());
+        Collections.sort(nameList);
+        return nameList;
     }
 }
 

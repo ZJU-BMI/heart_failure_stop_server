@@ -13,7 +13,6 @@ dataType: "MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT"
 databaseRequest:
   - "basicInfo"
   - "visitInfo"
-  - "previousVisitInfo"
   - "medicine"
   - "operation"
   - "labTest"

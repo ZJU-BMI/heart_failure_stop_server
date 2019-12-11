@@ -26,8 +26,6 @@ public class MachineLearningDataPrepareService {
     private ExamRepository examRepository;
     private MachineLearningConfig machineLearningConfig;
 
-
-
     @Autowired
     public MachineLearningDataPrepareService(DiagnosisRepository diagnosisRepository, LabTestRepository labTestRepository,
                                              MachineLearningConfig machineLearningConfig,
@@ -114,7 +112,6 @@ public class MachineLearningDataPrepareService {
             // 此处的
             request.put(String.valueOf(globalAdmissionTime), singleVisitRequest);
         }
-        System.out.println(request.toString());
         return request.toString();
     }
 
@@ -220,69 +217,5 @@ public class MachineLearningDataPrepareService {
 
         visitList.sort(Comparator.comparing(FourElementTuple::getD));
         return visitList;
-    }
-
-    private String dataSynthetic(){
-        Random rand = new Random();
-
-        int batchSize = 1;
-        double[][][] event = new double[10][1][11];
-        for(int i=0; i<event.length; i++){
-            for (int j=0; j<event[0].length; j++){
-                for (int k=0; k<event[0][0].length; k++)
-                    event[i][j][k] = rand.nextDouble();
-            }
-        }
-        double[][][] context = new double[10][1][189];
-        for(int i=0; i<context.length; i++){
-            for (int j=0; j<context[0].length; j++){
-                for (int k=0; k<context[0][0].length; k++)
-                    context[i][j][k] = rand.nextDouble();
-            }
-        }
-
-        double[][] base = new double[11][1];
-        for(int i=0; i<base.length; i++){
-            for (int j=0; j<base[0].length; j++){
-                base[i][j] = rand.nextDouble();
-            }
-        }
-
-        double[][] mutual = new double[11][11];
-        for(int i=0; i<mutual.length; i++){
-            for (int j=0; j<mutual[0].length; j++){
-                mutual[i][j] = rand.nextDouble();
-            }
-        }
-
-        int[][] timeList = new int[1][10];
-        for(int i=0; i<timeList.length; i++){
-            for (int j=0; j<timeList[0].length; j++){
-                timeList[i][j] = 10;
-            }
-        }
-
-        int taskIndex = 3;
-
-        int[] sequenceLength = new int[1];
-        Arrays.fill(sequenceLength, 4);
-
-        int phase = 1;
-
-
-        JSONObject content = new JSONObject();
-        content.put("event", event);
-        content.put("context", context);
-        content.put("base", base);
-        content.put("batch", batchSize);
-        content.put("mutual", mutual);
-        content.put("phase", phase);
-        content.put("time_list", timeList);
-        content.put("task", taskIndex);
-        content.put("sequence_length", sequenceLength);
-
-        JSONObject request = new JSONObject();
-        request.put("inputs", content);
-        return request.toString();
     }
 }

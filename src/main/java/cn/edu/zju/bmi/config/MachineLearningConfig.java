@@ -14,8 +14,6 @@ public class MachineLearningConfig {
     private final String machineLearningResourceRoot = "machineLearningConfigAndPreprocess/";
     private final String fullMachineLearningResourceRoot = "/machineLearningConfigAndPreprocess/";
     private final String hawkesRNNFolderPath = "/Users/sunzhoujian/tensorflowExtended/hawkesRNN/";
-
-
     public static final String SINGLE_VISIT = "SINGLE_VISIT";
     public static final String MULTI_VISIT_BEFORE_TARGET_VISIT = "MULTI_VISIT_BEFORE_TARGET_VISIT";
     public static final String MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT = "MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT";
