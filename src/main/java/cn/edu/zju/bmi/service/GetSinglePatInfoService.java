@@ -156,22 +156,53 @@ public class GetSinglePatInfoService {
         List<LabTest> labTestList =
                 labTestRepository.findByKeyUnifiedPatientIDAndLabTestItemName(
                         unifiedPatientID, itemName);
+        List<PatientVisit> validVisit = patientVisitRepository.findAllByKeyUnifiedPatientID(unifiedPatientID);
+        validVisit.sort(Comparator.comparingLong(o -> o.getAdmissionDateTime().getTime()));
+
         List<LabTestResult> list = new ArrayList<>();
 
-        for (LabTest labTest : labTestList){
-            String result = labTest.getResult();
-            String unit = labTest.getUnits();
-            Date testTime = labTest.getExecuteDate();
-            String hospitalCode = labTest.getKey().getHospitalCode();
+        for (PatientVisit patientVisit : validVisit){
+            String visitType = patientVisit.getKey().getVisitType();
+            String visitID = patientVisit.getKey().getVisitID();
+            String hospitalCode = patientVisit.getKey().getHospitalCode();
+            Date time = patientVisit.getAdmissionDateTime();
             String hospitalName = hospitalMapRepository.findHospitalMapByHospitalCode(hospitalCode).getHospitalName();
-            String visitType = labTest.getKey().getVisitType();
-            String visitID = labTest.getKey().getVisitID();
-            LabTestResult labTestResult = new LabTestResult(itemName, result, unit, testTime,
+
+            LabTestResult labTestResult = new LabTestResult(itemName, null, null, time,
                     hospitalCode, visitType, visitID, hospitalName);
+
+            for(LabTest labTest: labTestList) {
+                String result = labTest.getResult();
+                String unit = labTest.getUnits();
+                Date testTime = labTest.getExecuteDate();
+                String labHospitalCode = labTest.getKey().getHospitalCode();
+                String labVisitType = labTest.getKey().getVisitType();
+                String labVisitID = labTest.getKey().getVisitID();
+
+                if(result==null)
+                    result = "recordLost";
+
+                if(visitType.equals(labVisitType) && visitID.equals(labVisitID) && hospitalCode.equals(labHospitalCode)){
+                    if(labTestResult.getResult()==null){
+                        labTestResult.setResult(result);
+                        labTestResult.setUnit(unit);
+                        labTestResult.setTestTime(testTime);
+                    }
+                    else {
+                        Date prevDate = labTestResult.getTestTime();
+                        if(prevDate.after(testTime)){
+                            labTestResult.setResult(result);
+                            labTestResult.setUnit(unit);
+                            labTestResult.setTestTime(testTime);
+                        }
+                    }
+                }
+            }
             list.add(labTestResult);
         }
 
-        list.sort(Comparator.comparingLong(o -> o.getTestTime().getTime()));
+        if(list.size()>1)
+            list.sort(Comparator.comparingLong(o -> o.getTestTime().getTime()));
         return list;
     }
 
@@ -180,13 +211,16 @@ public class GetSinglePatInfoService {
         List<LabTest> labTestList =
                 labTestRepository.findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCodeAndLabTestItemName(
                         unifiedPatientID, visitID, visitType, hospitalCode, itemName);
+        String hospitalName = hospitalMapRepository.findHospitalMapByHospitalCode(hospitalCode).getHospitalName();
+
         List<LabTestResult> list = new ArrayList<>();
 
         for (LabTest labTest : labTestList){
             String result = labTest.getResult();
             String unit = labTest.getUnits();
             Date testTime = labTest.getExecuteDate();
-            LabTestResult labTestResult = new LabTestResult(itemName, result, unit, testTime);
+            LabTestResult labTestResult = new LabTestResult(itemName, result, unit, testTime, hospitalCode, visitType,
+                    visitID, hospitalName);
             list.add(labTestResult);
         }
 
