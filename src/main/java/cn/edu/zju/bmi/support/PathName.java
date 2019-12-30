@@ -27,4 +27,17 @@ public class PathName {
     // user info
     public static final String USER_INFO_DATA = "/backend/data/userInfo";
     public static final String USER_INFO = "/userInfo";
+
+    // algorithm management
+    public static final String ALGORITHM_MANAGEMENT="/backend/algorithmManagement";
+    public static final String UPLOAD_MODEL_FILE = "/uploadModelFile";
+    public static final String DOWNLOAD_MODEL_FILE = "/downloadModelFile";
+    public static final String UPLOAD_MODEL_CONFIG = "/uploadModelConfig";
+    public static final String DOWNLOAD_MODEL_CONFIG = "/downloadModelConfig";
+    public static final String UPLOAD_PREPROCESSING_MODULE = "/uploadPreprocessingModule";
+    public static final String DOWNLOAD_PREPROCESSING_MODULE = "/downloadPreprocessingModule";
+    public static final String UPLOAD_MODEL_DOCUMENT = "/uploadModelDoc";
+    public static final String DOWNLOAD_MODEL_DOCUMENT="/downloadModelDoc";
+    public static final String CREATE_NEW_MODEL= "/createNewModel";
+    public static final String DELETE_EXIST_MODEL = "/deleteExistModel";
 }
