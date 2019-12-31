@@ -2,7 +2,6 @@ package cn.edu.zju.bmi.support;
 
 public class PathName {
     //Index
-    public static final String INDEX = "/index";
 
     //Trajectory Analysis
     public static final String TRAJECTORY_ANALYSIS_DATA = "/backend/data/trajectoryAnalysis";
@@ -40,4 +39,5 @@ public class PathName {
     public static final String DOWNLOAD_MODEL_DOCUMENT="/downloadModelDoc";
     public static final String CREATE_NEW_MODEL= "/createNewModel";
     public static final String DELETE_EXIST_MODEL = "/deleteExistModel";
+    public static final String FETCH_MODEL_LIST = "/fetchModelList";
 }

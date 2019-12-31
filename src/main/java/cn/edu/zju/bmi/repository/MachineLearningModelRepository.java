@@ -9,6 +9,7 @@ public interface MachineLearningModelRepository extends JpaRepository<MachineLea
     MachineLearningModel findFirstByModelEnglishFunctionNameAndModelEnglishNameAndMainCategory(
             String modelEnglishFunctionName, String ModelEnglishName, String mainCategory
     );
+    List<MachineLearningModel> findByPlatform(String platform);
 
     @Override
     void delete(MachineLearningModel entity);

@@ -23,4 +23,9 @@ public class ParameterName {
     public static final String MODEL_PREPROCESS = "modelPreprocess";
     public static final String MODEL_DOC = "modelDoc";
 
+    public static final String TENSORFLOW = "Tensorflow";
+    public static final String ACCESS_CONTROL_CLOSE = "close";
+    public static final String ACCESS_CONTROL_PRIVATE = "private";
+    public static final String ACCESS_CONTROL_PUBLIC = "public";
+
 }
