@@ -10,7 +10,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Config {
-    private String preprocessScript;
     private String dataType;
     private ModelSummary modelSummary;
     private List<String> databaseRequest;

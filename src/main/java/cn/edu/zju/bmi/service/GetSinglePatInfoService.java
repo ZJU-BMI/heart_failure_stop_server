@@ -59,12 +59,19 @@ public class GetSinglePatInfoService {
 
     public PatientBasicInfo getPatientBasicInfo(String unifiedPatientID){
         Patient patGeneralInfo = patientRepository.findPatientByUnifiedPatientID(unifiedPatientID);
-        String patName = patGeneralInfo.getName();
-        String sex = patGeneralInfo.getSex();
 
-        String birthday = sdf1.format(patGeneralInfo.getBirthday());
+        String patName = "Not Found";
+        String sex = "Not Found";
+        String birthday = "Not Found";
+        String ethnicGroup = "Not Found";
+        if(patGeneralInfo!=null){
+            patName = patGeneralInfo.getName();
+            sex = patGeneralInfo.getSex();
+            birthday = sdf1.format(patGeneralInfo.getBirthday());
+            ethnicGroup = patGeneralInfo.getEthnicGroup();
+        }
 
-        String ethnicGroup = patGeneralInfo.getEthnicGroup();
+
         return new PatientBasicInfo(patName, birthday, sex, ethnicGroup);
     }
 
@@ -108,15 +115,23 @@ public class GetSinglePatInfoService {
         for (Operation operation: operationList)
             operationStrList.add(operation.getOperationDesc());
 
-        String patName = patGeneralInfo.getName();
-        String sex = patGeneralInfo.getSex();
-        Date birthday = patGeneralInfo.getBirthday();
-        Date visitTime = visitInfo.getAdmissionDateTime();
-        String age = String.valueOf((int) ((visitTime.getTime() - birthday.getTime()) / (1000 * 60 * 60 * 24)) / 365);
         String hospitalName = getHospitalName(hospitalCode);
         String admissionTime = sdf1.format(visitInfo.getAdmissionDateTime());
         String dischargeTime = sdf1.format(visitInfo.getDischargeDateTime());
         String deathFlag = visitInfo.getDeathFlag();
+
+        String patName = "Not Found";
+        String sex = "Not Found";
+        String age = "Not Found";
+
+        if(patGeneralInfo!=null){
+            patName = patGeneralInfo.getName();
+            sex = patGeneralInfo.getSex();
+            Date birthday = patGeneralInfo.getBirthday();
+            Date visitTime = visitInfo.getAdmissionDateTime();
+            age = String.valueOf((int) ((visitTime.getTime() - birthday.getTime()) / (1000 * 60 * 60 * 24)) / 365);
+        }
+
         String symptom = "当前暂无此数据";
 
         return new VisitDetailedInfo (patName, sex, age, hospitalName, visitType, visitID,

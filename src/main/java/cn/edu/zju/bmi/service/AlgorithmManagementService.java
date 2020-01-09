@@ -3,7 +3,7 @@ package cn.edu.zju.bmi.service;
 import cn.edu.zju.bmi.entity.DAO.MachineLearningModel;
 import cn.edu.zju.bmi.repository.MachineLearningModelRepository;
 import cn.edu.zju.bmi.support.ParameterName;
-import cn.edu.zju.bmi.support.TwoElementTuple;
+import cn.edu.zju.bmi.support.StringResponse;
 import cn.edu.zju.bmi.support.UnZipFiles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +28,7 @@ import java.util.*;
 public class AlgorithmManagementService {
     @Value(value="${app.machineLearningModelRoot}")
     private String MODEL_SAVE_PATH;
-    @Value(value="${app.tensorflowServer}")
+    @Value(value="${app.tensorflowServerDataRoot}")
     private String TENSORFLOW_SERVER_PATH;
     private MachineLearningModelRepository machineLearningModelRepository;
 
@@ -37,7 +37,54 @@ public class AlgorithmManagementService {
         this.machineLearningModelRepository = machineLearningModelRepository;
     }
 
-    public ResponseEntity<?> createNewModel(String modelChineseName,
+    public ResponseEntity<?> updateAccessControl(String mainCategory, String modelName, String modelFunction,
+                                                 String message){
+        try {
+            MachineLearningModel machineLearningModel =
+                    machineLearningModelRepository.findFirstByModelEnglishFunctionNameAndModelEnglishNameAndMainCategory(
+                            modelFunction, modelName, mainCategory
+                    );
+            machineLearningModel.setAccessControl(message);
+            machineLearningModelRepository.save(machineLearningModel);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateSuccess");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateFailed");
+        }
+    }
+
+    public ResponseEntity<?> updatePlatform(String mainCategory, String modelName, String modelFunction,
+                                                 String message){
+        try {
+            MachineLearningModel machineLearningModel =
+                    machineLearningModelRepository.findFirstByModelEnglishFunctionNameAndModelEnglishNameAndMainCategory(
+                            modelFunction, modelName, mainCategory
+                    );
+            machineLearningModel.setPlatform(message);
+            machineLearningModelRepository.save(machineLearningModel);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateSuccess");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateFailed");
+        }
+    }
+
+    public MachineLearningModel getModelInfo(String mainCategory, String modelName, String modelFunction){
+        return machineLearningModelRepository.findFirstByModelEnglishFunctionNameAndModelEnglishNameAndMainCategory(
+                modelFunction, modelName, mainCategory);
+    }
+
+    public StringResponse createNewModel(String modelChineseName,
                                             String modelEnglishName,
                                             String mainCategory,
                                             String modelFunctionChinese,
@@ -49,32 +96,44 @@ public class AlgorithmManagementService {
                                             MultipartFile modelDoc,
                                             MultipartFile modelPreprocess,
                                             MultipartFile modelConfig){
-        createNewFolder(mainCategory, modelEnglishName, modelFunctionEnglish);
-        saveModelFile(mainCategory, modelEnglishName, modelFunctionEnglish, modelFile);
-        saveModelDoc(mainCategory, modelEnglishName, modelFunctionEnglish, modelDoc);
-        saveConfig(mainCategory, modelEnglishName, modelFunctionEnglish, modelConfig);
-        saveModelDoc(mainCategory, modelEnglishName, modelFunctionEnglish, modelPreprocess);
+        try {
+            createNewFolder(mainCategory, modelEnglishName, modelFunctionEnglish);
+            saveModelFile(mainCategory, modelEnglishName, modelFunctionEnglish, modelFile);
+            saveModelDoc(mainCategory, modelEnglishName, modelFunctionEnglish, modelDoc);
+            saveConfig(mainCategory, modelEnglishName, modelFunctionEnglish, modelConfig);
+            saveAndUnZipPreprocess(mainCategory, modelEnglishName, modelFunctionEnglish, modelPreprocess);
 
-        Date date = new Date(System.currentTimeMillis());
+            Date date = new Date(System.currentTimeMillis());
 
-        MachineLearningModel entity = new MachineLearningModel(user, mainCategory,
-                modelChineseName, modelEnglishName, modelFunctionChinese,
-                modelFunctionEnglish, platform, accessControl, date, date);
-        machineLearningModelRepository.save(entity);
+            MachineLearningModel entity = new MachineLearningModel(user, mainCategory,
+                    modelChineseName, modelEnglishName, modelFunctionChinese,
+                    modelFunctionEnglish, platform, accessControl, date, date);
+            machineLearningModelRepository.save(entity);
 
-        modelDeploy(mainCategory, modelEnglishName, modelFunctionEnglish);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/text"))
-                .body("createSuccess");
+            modelDeploy(mainCategory, modelEnglishName, modelFunctionEnglish);
+            return new StringResponse("createSuccess");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return new StringResponse("createFailed");
+        }
     }
 
     public ResponseEntity<?> updateModelFile(String mainCategory, String modelName, String modelFunction,
                                              MultipartFile modelFile){
-        saveModelFile(mainCategory, modelName, modelFunction, modelFile);
-        modelDeploy(mainCategory, modelName, modelFunction);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/text"))
-                .body("updateModelFileSuccess");
+        try {
+            saveModelFile(mainCategory, modelName, modelFunction, modelFile);
+            modelDeploy(mainCategory, modelName, modelFunction);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateSuccess");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateFailed");
+        }
     }
 
     private void saveModelFile(String mainCategory, String modelName, String modelFunction, MultipartFile modelFile) {
@@ -90,10 +149,18 @@ public class AlgorithmManagementService {
 
     public ResponseEntity<?> updateModelConfig(String mainCategory, String modelName, String modelFunction,
                                              MultipartFile modelConfig){
-        saveConfig(mainCategory, modelName, modelFunction, modelConfig);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/text"))
-                .body("updateConfigSuccess");
+        try {
+            saveConfig(mainCategory, modelName, modelFunction, modelConfig);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateSuccess");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateFailed");
+        }
     }
 
     private void saveConfig(String mainCategory, String modelName, String modelFunction, MultipartFile modelConfig){
@@ -101,6 +168,7 @@ public class AlgorithmManagementService {
             String path = MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction+"/"+modelConfig.getOriginalFilename();
             deleteEntirePathIfExist(Paths.get(path));
             modelConfig.transferTo(new File(path));
+
         }
         catch (IOException e){
             e.printStackTrace();
@@ -110,10 +178,18 @@ public class AlgorithmManagementService {
 
     public ResponseEntity<?> updateModelDoc(String mainCategory, String modelName, String modelFunction,
                                              MultipartFile modelDoc){
-        saveModelDoc(mainCategory, modelName, modelFunction, modelDoc);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/text"))
-                .body("updateDocSuccess");
+        try {
+            saveModelDoc(mainCategory, modelName, modelFunction, modelDoc);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateSuccess");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateFailed");
+        }
     }
 
     private void saveModelDoc(String mainCategory, String modelName, String modelFunction, MultipartFile modelDoc){
@@ -130,29 +206,45 @@ public class AlgorithmManagementService {
 
     public ResponseEntity<?> updatePreprocess(String mainCategory, String modelName, String modelFunction,
                                               MultipartFile preprocess){
-        savePreprocess(mainCategory, modelName, modelFunction, preprocess);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/text"))
-                .body("updatePreprocessSuccess");
+        try {
+            saveAndUnZipPreprocess(mainCategory, modelName, modelFunction, preprocess);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateSuccess");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("updateFailed");
+        }
     }
 
-    private void savePreprocess(String mainCategory, String modelName, String modelFunction, MultipartFile preprocess){
+    private void saveAndUnZipPreprocess(String mainCategory, String modelName, String modelFunction, MultipartFile preprocess){
         try {
-            String path = MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction+"/"+preprocess.getOriginalFilename();
-            deleteEntirePathIfExist(Paths.get(path));
-            preprocess.transferTo(new File(path));
+            String folderPath = MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction+"/";
+            String filePath = folderPath+preprocess.getOriginalFilename();
+            deleteEntirePathIfExist(Paths.get(filePath));
+            deleteEntirePathIfExist(Paths.get(folderPath+"/preprocess"));
+            preprocess.transferTo(new File(filePath));
+            UnZipFiles.uniZip(filePath, folderPath);
         }
         catch (IOException e){
             e.printStackTrace();
         }
     }
 
-    private void deleteEntirePathIfExist(Path path) throws IOException {
-        if(Files.exists(path)){
-            Files.walk(path)
-                    .sorted(Comparator.reverseOrder())
-                    .map(Path::toFile)
-                    .forEach(File::delete);
+    private void deleteEntirePathIfExist(Path path) {
+        try {
+            if (Files.exists(path)) {
+                Files.walk(path)
+                        .sorted(Comparator.reverseOrder())
+                        .map(Path::toFile)
+                        .forEach(File::delete);
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
         }
     }
 
@@ -198,7 +290,7 @@ public class AlgorithmManagementService {
                 .body(resource);
     }
 
-    public ResponseEntity<Resource> deleteModel(String mainCategory, String modelName, String modelFunction){
+    public ResponseEntity<String> deleteModel(String mainCategory, String modelName, String modelFunction){
         String pathStr = MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction;
         Path path = Paths.get(pathStr);
         try {
@@ -210,17 +302,27 @@ public class AlgorithmManagementService {
         catch (IOException e){
             e.printStackTrace();
         }
-        MachineLearningModel machineLearningModel =
-                machineLearningModelRepository.findFirstByModelEnglishFunctionNameAndModelEnglishNameAndMainCategory(
-                        modelFunction, modelName, mainCategory
-                );
-        machineLearningModelRepository.delete(machineLearningModel);
+        try {
+            MachineLearningModel machineLearningModel =
+                    machineLearningModelRepository.findFirstByModelEnglishFunctionNameAndModelEnglishNameAndMainCategory(
+                            modelFunction, modelName, mainCategory
+                    );
+            machineLearningModelRepository.delete(machineLearningModel);
 
-        deleteModelDeploy(mainCategory, modelName, modelFunction);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("text/plain"))
-                .header(HttpHeaders.CONTENT_DISPOSITION)
-                .body(null);
+            deleteModelDeploy(mainCategory, modelName, modelFunction);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("text/plain"))
+                    .header(HttpHeaders.CONTENT_DISPOSITION)
+                    .body(null);
+        }
+
+        catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/text"))
+                    .body("deleteFailed");
+        }
+
     }
 
     private void modelDeploy(String mainCategory, String modelName, String modelFunction){
@@ -309,9 +411,7 @@ public class AlgorithmManagementService {
             String modelEnglishName = machineLearningModel.getModelEnglishName();
             String modelEnglishFunction = machineLearningModel.getModelEnglishFunctionName();
             String mainCategory = machineLearningModel.getMainCategory();
-            String accessControl = machineLearningModel.getAccessControl();
-            if(accessControl.equals(ParameterName.ACCESS_CONTROL_CLOSE))
-                continue;
+
             String modelPath = "/models/"+mainCategory+"/"+modelEnglishName+"/"+modelEnglishFunction+"/";
             tensorflowConfigGenerator.addItem(
                     mainCategory+"_"+modelEnglishName+"_"+modelEnglishFunction, modelPath);

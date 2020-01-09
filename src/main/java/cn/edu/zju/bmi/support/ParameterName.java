@@ -8,7 +8,6 @@ public class ParameterName {
     public static final String VISIT_ID = "visitID";
     public static final String NO_UNIFIED_PATIENT_ID_FOUND = "noUnifiedPatientIDFound";
     public static final String USER_NAME = "userName";
-    public static final String PREDICT_TASK = "predictTask";
     public static final String ITEM_NAME = "itemName";
 
     public static final String MODEL_NAME_CHINESE = "modelNameChinese";
@@ -18,14 +17,18 @@ public class ParameterName {
     public static final String MAIN_CATEGORY = "mainCategory";
     public static final String MODEL_FUNCTION_CHINESE = "modelFunctionChinese";
     public static final String MODEL_FUNCTION_ENGLISH = "modelFunctionEnglish";
+    public static final String FILE_OR_MESSAGE = "fileOrMessage";
     public static final String MODEL_FILE = "modelFile";
     public static final String MODEL_CONFIG = "modelConfig";
     public static final String MODEL_PREPROCESS = "modelPreprocess";
     public static final String MODEL_DOC = "modelDoc";
 
     public static final String TENSORFLOW = "Tensorflow";
-    public static final String ACCESS_CONTROL_CLOSE = "close";
-    public static final String ACCESS_CONTROL_PRIVATE = "private";
-    public static final String ACCESS_CONTROL_PUBLIC = "public";
 
+    public static final String STATE_CONTENT = "stateContent";
+    public static final String USER_ID = "userID";
+
+    public static final String MODEL_CATEGORY = "modelCategory";
+    public static final String MODEL_NAME = "modelName";
+    public static final String MODEL_FUNCTION = "modelFunction";
 }

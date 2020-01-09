@@ -1,17 +1,19 @@
 package cn.edu.zju.bmi.service;
-
-import cn.edu.zju.bmi.config.MachineLearningConfig;
 import cn.edu.zju.bmi.entity.DAO.*;
 import cn.edu.zju.bmi.repository.*;
 import cn.edu.zju.bmi.support.FourElementTuple;
+import cn.edu.zju.bmi.support.ParameterName;
 import cn.edu.zju.bmi.support.machineLearningDataRequestConfig.Config;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 @Service
@@ -24,11 +26,16 @@ public class MachineLearningDataPrepareService {
     private VitalSignRepository vitalSignRepository;
     private PatientRepository patientRepository;
     private ExamRepository examRepository;
-    private MachineLearningConfig machineLearningConfig;
+
+    private static final String SINGLE_VISIT = "SINGLE_VISIT";
+    private static final String MULTI_VISIT_BEFORE_TARGET_VISIT = "MULTI_VISIT_BEFORE_TARGET_VISIT";
+    private static final String MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT = "MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT";
+
+    @Value(value="${app.machineLearningModelRoot}")
+    private String root;
 
     @Autowired
     public MachineLearningDataPrepareService(DiagnosisRepository diagnosisRepository, LabTestRepository labTestRepository,
-                                             MachineLearningConfig machineLearningConfig,
                                              OperationRepository operationRepository, OrdersRepository ordersRepository,
                                              PatientRepository patientRepository, VitalSignRepository vitalSignRepository,
                                              PatientVisitRepository patientVisitRepository, ExamRepository examRepository)
@@ -41,41 +48,44 @@ public class MachineLearningDataPrepareService {
         this.vitalSignRepository = vitalSignRepository;
         this.patientVisitRepository = patientVisitRepository;
         this.examRepository = examRepository;
-        this.machineLearningConfig = machineLearningConfig;
     }
 
-    public String fetchData(String unifiedPatientID, String hospitalCode, String visitType,
-                            String visitID, String model, String predictTask) throws Exception {
+    public String fetchData(String unifiedPatientID, String hospitalCode, String visitType, String visitID,
+                            String modelCategory, String modelName, String modelFunction) throws Exception {
         Yaml yaml = new Yaml(new Constructor(Config.class));
-        InputStream inputStream = this.getClass()
-                .getClassLoader().getResourceAsStream(machineLearningConfig.getMachineLearningResourceRoot()+model+".yml");
+
+        String folder = root+modelCategory+"/"+modelName+"/"+modelFunction+"/";
+        InputStream inputStream = new FileInputStream(folder+"config.yml");
+
         Config config = yaml.load(inputStream);
 
         String dataType = config.getDataType();
-        List<String> featureList = config.getDatabaseRequest();
-
-        List<FourElementTuple<String, String, String, Long>> validList = null;
 
         String returnStr = null;
         switch (dataType){
-            case MachineLearningConfig.SINGLE_VISIT:
-            case MachineLearningConfig.MULTI_VISIT_BEFORE_TARGET_VISIT:
+            case SINGLE_VISIT:
+            case MULTI_VISIT_BEFORE_TARGET_VISIT:
                 throw new Exception("To Be Done");
-            case MachineLearningConfig.MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT: {
-                validList = getVisitListBeforeOrEqualToTargetVisit(unifiedPatientID, hospitalCode, visitType, visitID);
+            case MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT: {
+
+                List<String> featureList = config.getDatabaseRequest();
+                List<FourElementTuple<String, String, String, Long>> validList=
+                        getVisitListBeforeOrEqualToTargetVisit(unifiedPatientID, hospitalCode, visitType, visitID);
                 String unPreprocessedData = getDataFromDatabase(featureList, unifiedPatientID, validList);
 
+                // 由于数据数量较大，不能直接作为参数传入，因此先暂存一下
                 String fileName = String.valueOf(new Date().getTime());
-                BufferedWriter writer = new BufferedWriter(new FileWriter(
-                        machineLearningConfig.getHawkesRNNFolderPath()+fileName));
+                BufferedWriter writer = new BufferedWriter(new FileWriter(folder+"preprocess/"+fileName));
                 writer.write(unPreprocessedData);
                 writer.close();
 
-                String command = "python " +
-                        machineLearningConfig.getHawkesRNNFolderPath()+"data_convert.py " +
-                        fileName + " " + predictTask;
+                // 利用外源性py脚本做数据预处理
+                String command = "python " + folder+"preprocess/data_convert.py " + fileName;
                 Process proc = Runtime.getRuntime().exec(command);
                 proc.waitFor();
+
+                //用完删除数据文件
+                Files.delete(Paths.get(folder+"preprocess/"+fileName));
 
                 BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
                 String line = null;
@@ -104,10 +114,10 @@ public class MachineLearningDataPrepareService {
             String globalAdmissionTime = String.valueOf(visit.getD());
             JSONObject singleVisitRequest =
                     getSingleVisitData(featureTypeList, unifiedPatientID, hospitalCode, visitID, visitType);
-            singleVisitRequest.put("hospitalCode", hospitalCode);
-            singleVisitRequest.put("visitType", visitType);
-            singleVisitRequest.put("visitID", visitID);
-            singleVisitRequest.put("unifiedPatientID", unifiedPatientID);
+            singleVisitRequest.put(ParameterName.HOSPITAL_CODE, hospitalCode);
+            singleVisitRequest.put(ParameterName.VISIT_TYPE, visitType);
+            singleVisitRequest.put(ParameterName.VISIT_ID, visitID);
+            singleVisitRequest.put(ParameterName.UNIFIED_PATIENT_ID, unifiedPatientID);
 
             // 此处的
             request.put(String.valueOf(globalAdmissionTime), singleVisitRequest);
