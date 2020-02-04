@@ -3,13 +3,10 @@ import cn.edu.zju.bmi.entity.DAO.*;
 import cn.edu.zju.bmi.repository.*;
 import cn.edu.zju.bmi.support.FourElementTuple;
 import cn.edu.zju.bmi.support.ParameterName;
-import cn.edu.zju.bmi.support.machineLearningDataRequestConfig.Config;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -26,10 +23,6 @@ public class MachineLearningDataPrepareService {
     private VitalSignRepository vitalSignRepository;
     private PatientRepository patientRepository;
     private ExamRepository examRepository;
-
-    private static final String SINGLE_VISIT = "SINGLE_VISIT";
-    private static final String MULTI_VISIT_BEFORE_TARGET_VISIT = "MULTI_VISIT_BEFORE_TARGET_VISIT";
-    private static final String MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT = "MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT";
 
     @Value(value="${app.machineLearningModelRoot}")
     private String root;
@@ -52,57 +45,47 @@ public class MachineLearningDataPrepareService {
 
     public String fetchData(String unifiedPatientID, String hospitalCode, String visitType, String visitID,
                             String modelCategory, String modelName, String modelFunction) throws Exception {
-        Yaml yaml = new Yaml(new Constructor(Config.class));
 
         String folder = root+modelCategory+"/"+modelName+"/"+modelFunction+"/";
-        InputStream inputStream = new FileInputStream(folder+"config.yml");
 
-        Config config = yaml.load(inputStream);
+        // 当输入相应请求时，返回该病人之前的所有数据（这里可能会多传很多不需要的信息，留待以后优化）
+        List<FourElementTuple<String, String, String, Long>> validList=
+                getVisitListBeforeOrEqualToTargetVisit(unifiedPatientID, hospitalCode, visitType, visitID);
+        String unPreprocessedData = getFullDataFromDatabase(unifiedPatientID, validList);
 
-        String dataType = config.getDataType();
+        // 由于数据数量较大，不能直接作为参数传入，因此先暂存一下
+        String fileName = String.valueOf(new Date().getTime());
+        BufferedWriter writer = new BufferedWriter(new FileWriter(folder+"preprocess/"+fileName));
+        writer.write(unPreprocessedData);
+        writer.close();
 
+        // 利用外源性py脚本做数据预处理
+        String command = "python " + folder+"preprocess/data_convert.py " + fileName;
+        Process proc = Runtime.getRuntime().exec(command);
+        proc.waitFor();
+
+        //用完删除数据文件
+        Files.delete(Paths.get(folder+"preprocess/"+fileName));
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+        String line = null;
         String returnStr = null;
-        switch (dataType){
-            case SINGLE_VISIT:
-            case MULTI_VISIT_BEFORE_TARGET_VISIT:
-                throw new Exception("To Be Done");
-            case MULTI_VISIT_BEFORE_AND_EQUAL_TARGET_VISIT: {
-
-                List<String> featureList = config.getDatabaseRequest();
-                List<FourElementTuple<String, String, String, Long>> validList=
-                        getVisitListBeforeOrEqualToTargetVisit(unifiedPatientID, hospitalCode, visitType, visitID);
-                String unPreprocessedData = getDataFromDatabase(featureList, unifiedPatientID, validList);
-
-                // 由于数据数量较大，不能直接作为参数传入，因此先暂存一下
-                String fileName = String.valueOf(new Date().getTime());
-                BufferedWriter writer = new BufferedWriter(new FileWriter(folder+"preprocess/"+fileName));
-                writer.write(unPreprocessedData);
-                writer.close();
-
-                // 利用外源性py脚本做数据预处理
-                String command = "python " + folder+"preprocess/data_convert.py " + fileName;
-                Process proc = Runtime.getRuntime().exec(command);
-                proc.waitFor();
-
-                //用完删除数据文件
-                Files.delete(Paths.get(folder+"preprocess/"+fileName));
-
-                BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-                String line = null;
-                while ((line = in.readLine()) != null) {
-                    returnStr = line;
-                    break;
-                }
-                in.close();
-                proc.waitFor();
-            }
+        while ((line = in.readLine()) != null) {
+            returnStr = line;
+            break;
         }
-
+        in.close();
+        proc.waitFor();
         return returnStr;
     }
 
-    private String getDataFromDatabase(List<String> featureTypeList, String unifiedPatientID,
-                                       List<FourElementTuple<String, String, String, Long>> visitList){
+    private String getFullDataFromDatabase(String unifiedPatientID,
+                                           List<FourElementTuple<String, String, String, Long>> visitList){
+        // featureTypeList 包括
+        String[] featureTypeList = new String[]{
+                "basicInfo", "visitInfo", "medicine", "operation", "labTest",
+                "exam", "vitalSign", "diagnosis"};
+
         JSONObject request = new JSONObject();
 
         // for multiple Visit, return in JSON string
@@ -125,7 +108,7 @@ public class MachineLearningDataPrepareService {
         return request.toString();
     }
 
-    private JSONObject getSingleVisitData(List<String> featureList, String unifiedPatientID, String hospitalCode,
+    private JSONObject getSingleVisitData(String[] featureList, String unifiedPatientID, String hospitalCode,
                                       String visitID, String visitType){
         JSONObject request = new JSONObject();
 
