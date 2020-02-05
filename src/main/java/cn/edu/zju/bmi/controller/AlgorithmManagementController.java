@@ -43,11 +43,10 @@ public class AlgorithmManagementController {
             @RequestParam(ParameterName.MODEL_FUNCTION_ENGLISH) String modelFunctionEnglish,
             @RequestParam(ParameterName.MODEL_FILE) MultipartFile modelFile,
             @RequestParam(ParameterName.MODEL_DOC) MultipartFile modelDoc,
-            @RequestParam(ParameterName.MODEL_PREPROCESS) MultipartFile modelPreprocess,
-            @RequestParam(ParameterName.MODEL_CONFIG) MultipartFile modelConfig){
+            @RequestParam(ParameterName.MODEL_PREPROCESS) MultipartFile modelPreprocess){
         return algorithmManagementService.createNewModel(modelNameChinese, modelNameEnglish, mainCategory,
                 modelFunctionChinese, modelFunctionEnglish, platform, user, accessControl, modelFile,modelDoc,
-                modelPreprocess, modelConfig);
+                modelPreprocess);
     }
 
     @PostMapping(value = PathName.UPLOAD_MODEL_FILE, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -68,15 +67,6 @@ public class AlgorithmManagementController {
         return algorithmManagementService.updateModelDoc(mainCategory, modelName, modelFunction, modelDoc);
     }
 
-    @PostMapping(value = PathName.UPLOAD_MODEL_CONFIG)
-    public ResponseEntity updateConfig(
-            @RequestParam(ParameterName.MODEL_NAME_ENGLISH) String modelName,
-            @RequestParam(ParameterName.MAIN_CATEGORY) String mainCategory,
-            @RequestParam(ParameterName.MODEL_FUNCTION_ENGLISH) String modelFunction,
-            @RequestParam(ParameterName.FILE_OR_MESSAGE) MultipartFile modelConfig){
-        return algorithmManagementService.updateModelConfig(mainCategory, modelName, modelFunction, modelConfig);
-    }
-
     @PostMapping(value = PathName.UPLOAD_PREPROCESSING_MODULE)
     public ResponseEntity updatePreprocess(
             @RequestParam(ParameterName.MODEL_NAME_ENGLISH) String modelName,
@@ -92,14 +82,6 @@ public class AlgorithmManagementController {
             @RequestParam(ParameterName.MAIN_CATEGORY) String mainCategory,
             @RequestParam(ParameterName.MODEL_FUNCTION_ENGLISH) String modelFunction ) {
         return algorithmManagementService.readModelFile(mainCategory, modelName, modelFunction);
-    }
-
-    @GetMapping(value = PathName.DOWNLOAD_MODEL_CONFIG)
-    public ResponseEntity downloadModelConfig(
-            @RequestParam(ParameterName.MODEL_NAME_ENGLISH) String modelName,
-            @RequestParam(ParameterName.MAIN_CATEGORY) String mainCategory,
-            @RequestParam(ParameterName.MODEL_FUNCTION_ENGLISH) String modelFunction ) {
-        return algorithmManagementService.readModelConfig(mainCategory, modelName, modelFunction);
     }
 
     @GetMapping(value = PathName.DOWNLOAD_MODEL_DOCUMENT)

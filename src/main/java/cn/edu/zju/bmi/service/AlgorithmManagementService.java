@@ -94,13 +94,11 @@ public class AlgorithmManagementService {
                                             String accessControl,
                                             MultipartFile modelFile,
                                             MultipartFile modelDoc,
-                                            MultipartFile modelPreprocess,
-                                            MultipartFile modelConfig){
+                                            MultipartFile modelPreprocess){
         try {
             createNewFolder(mainCategory, modelEnglishName, modelFunctionEnglish);
             saveModelFile(mainCategory, modelEnglishName, modelFunctionEnglish, modelFile);
             saveModelDoc(mainCategory, modelEnglishName, modelFunctionEnglish, modelDoc);
-            saveConfig(mainCategory, modelEnglishName, modelFunctionEnglish, modelConfig);
             saveAndUnZipPreprocess(mainCategory, modelEnglishName, modelFunctionEnglish, modelPreprocess);
 
             Date date = new Date(System.currentTimeMillis());
@@ -146,35 +144,6 @@ public class AlgorithmManagementService {
             e.printStackTrace();
         }
     }
-
-    public ResponseEntity<?> updateModelConfig(String mainCategory, String modelName, String modelFunction,
-                                             MultipartFile modelConfig){
-        try {
-            saveConfig(mainCategory, modelName, modelFunction, modelConfig);
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType("application/text"))
-                    .body("updateSuccess");
-        }
-        catch (Exception e){
-            e.printStackTrace();
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType("application/text"))
-                    .body("updateFailed");
-        }
-    }
-
-    private void saveConfig(String mainCategory, String modelName, String modelFunction, MultipartFile modelConfig){
-        try {
-            String path = MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction+"/"+modelConfig.getOriginalFilename();
-            deleteEntirePathIfExist(Paths.get(path));
-            modelConfig.transferTo(new File(path));
-
-        }
-        catch (IOException e){
-            e.printStackTrace();
-        }
-    }
-
 
     public ResponseEntity<?> updateModelDoc(String mainCategory, String modelName, String modelFunction,
                                              MultipartFile modelDoc){
@@ -266,11 +235,6 @@ public class AlgorithmManagementService {
 
     public ResponseEntity<Resource> readModelDoc(String mainCategory, String modelName, String modelFunction){
         String pathStr = MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"modelDoc.md";
-        return getResourceResponseEntity(pathStr, "text/plain");
-    }
-
-    public ResponseEntity<Resource> readModelConfig(String mainCategory, String modelName, String modelFunction){
-        String pathStr = MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"config.yml";
         return getResourceResponseEntity(pathStr, "text/plain");
     }
 

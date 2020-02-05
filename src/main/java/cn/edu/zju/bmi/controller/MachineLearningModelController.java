@@ -54,8 +54,13 @@ public class MachineLearningModelController {
 
         if(platform.equals("Tensorflow")) {
             String url = tensorflowAddress + modelCategory + "_" + modelName + "_" + modelFunction + ":predict";
-            ResponseEntity<String> answer = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
-            return answer.getBody();
+            try{
+                ResponseEntity<String> answer = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+                return answer.getBody();
+            }
+            catch (Exception e){
+                return "{\n \"outputs\": [\n [\n 0\n ]\n ]\n }";
+            }
         }
         else{
             // prepare for pytorch and sklearn, To Be Done
