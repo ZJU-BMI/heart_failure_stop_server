@@ -31,8 +31,6 @@ public class PathName {
     public static final String ALGORITHM_MANAGEMENT="/backend/algorithmManagement";
     public static final String UPLOAD_MODEL_FILE = "/uploadModelFile";
     public static final String DOWNLOAD_MODEL_FILE = "/downloadModelFile";
-    public static final String UPLOAD_MODEL_CONFIG = "/uploadModelConfig";
-    public static final String DOWNLOAD_MODEL_CONFIG = "/downloadModelConfig";
     public static final String UPLOAD_PREPROCESSING_MODULE = "/uploadPreprocessingModule";
     public static final String DOWNLOAD_PREPROCESSING_MODULE = "/downloadPreprocessingModule";
     public static final String UPLOAD_MODEL_DOCUMENT = "/uploadModelDoc";
@@ -48,4 +46,9 @@ public class PathName {
     public static final String STATE_MANAGEMENT="/backend/stateManagement";
     public static final String UPDATE_STATE = "/uploadState";
     public static final String DOWNLOAD_STATE = "/downloadState";
+
+    // machine learning path
+    public static final String INVOKE_MACHINE_LEARNING_SERVICE = "/backend/machineLearning";
+    public static final String FETCH_MACHINE_LEARNING_MODEL_DATA = "/getDataForMachineLearningModelUpToOneVisit";
+    public static final String EXECUTE_MACHINE_LEARNING_MODEL = "/executeModel";
 }

@@ -2,20 +2,18 @@ package cn.edu.zju.bmi.controller;
 import cn.edu.zju.bmi.service.AlgorithmManagementService;
 import cn.edu.zju.bmi.service.MachineLearningDataPrepareService;
 import cn.edu.zju.bmi.support.ParameterName;
+import cn.edu.zju.bmi.support.PathName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.security.RolesAllowed;
 
 
 @RestController
-@RequestMapping(path="/backend/machineLearning")
+@RequestMapping(path= PathName.INVOKE_MACHINE_LEARNING_SERVICE)
 @RolesAllowed("ROLE_USER")
 public class MachineLearningModelController {
     private RestTemplate restTemplate;
@@ -34,8 +32,8 @@ public class MachineLearningModelController {
         this.algorithmManagementService = algorithmManagementService;
     }
 
-    @GetMapping(value = "/singleVisitInvokeMachineLearningService")
-    public String singleVisitInvokeMachineLearningService(
+    @GetMapping(value = PathName.FETCH_MACHINE_LEARNING_MODEL_DATA)
+    public String getMachineLearningModelData(
             @RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
             @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
             @RequestParam(ParameterName.VISIT_TYPE) String visitType,
@@ -43,14 +41,21 @@ public class MachineLearningModelController {
             @RequestParam(ParameterName.MODEL_FUNCTION) String modelFunction,
             @RequestParam(ParameterName.MODEL_NAME) String modelName,
             @RequestParam(ParameterName.MODEL_CATEGORY) String modelCategory) throws Exception {
-        String requestBodyString = machineLearningDataPrepareService.fetchData(unifiedPatientID, hospitalCode,
+        return machineLearningDataPrepareService.fetchData(unifiedPatientID, hospitalCode,
                 visitType, visitID, modelCategory, modelName, modelFunction);
+    }
 
+    @PostMapping(value = PathName.EXECUTE_MACHINE_LEARNING_MODEL)
+    public String executeModel(
+            @RequestParam(ParameterName.MODEL_NAME) String modelName,
+            @RequestParam(ParameterName.MODEL_CATEGORY) String modelCategory,
+            @RequestParam(ParameterName.MODEL_FUNCTION) String modelFunction,
+            @RequestParam(ParameterName.MODEL_INPUT) String input){
 
         String platform = algorithmManagementService.getModelInfo(modelCategory, modelName, modelFunction).getPlatform();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<String> entity = new HttpEntity<>(requestBodyString, headers);
+        HttpEntity<String> entity = new HttpEntity<>(input, headers);
 
         if(platform.equals("Tensorflow")) {
             String url = tensorflowAddress + modelCategory + "_" + modelName + "_" + modelFunction + ":predict";

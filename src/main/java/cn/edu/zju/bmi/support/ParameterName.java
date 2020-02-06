@@ -19,7 +19,6 @@ public class ParameterName {
     public static final String MODEL_FUNCTION_ENGLISH = "modelFunctionEnglish";
     public static final String FILE_OR_MESSAGE = "fileOrMessage";
     public static final String MODEL_FILE = "modelFile";
-    public static final String MODEL_CONFIG = "modelConfig";
     public static final String MODEL_PREPROCESS = "modelPreprocess";
     public static final String MODEL_DOC = "modelDoc";
 
@@ -31,4 +30,5 @@ public class ParameterName {
     public static final String MODEL_CATEGORY = "modelCategory";
     public static final String MODEL_NAME = "modelName";
     public static final String MODEL_FUNCTION = "modelFunction";
+    public static final String MODEL_INPUT = "modelInput";
 }
