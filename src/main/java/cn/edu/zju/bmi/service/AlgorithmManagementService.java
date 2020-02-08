@@ -234,7 +234,7 @@ public class AlgorithmManagementService {
     }
 
     public ResponseEntity<Resource> readModelDoc(String mainCategory, String modelName, String modelFunction){
-        String pathStr = MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"modelDoc.md";
+        String pathStr = MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"doc.md";
         return getResourceResponseEntity(pathStr, "text/plain");
     }
 
