@@ -12,4 +12,13 @@ public interface VitalSignRepository extends JpaRepository<VitalSign, VitalSignP
                                                                                             String visitID,
                                                                                             String visitType,
                                                                                             String hospitalCode);
+    List<VitalSign> findByKeyVitalSignAndResultLessThanAndResultGreaterThan(String key_vitalSign,
+                                                                            double highThreshold,
+                                                                            double lowThreshold);
+
+    List<VitalSign> findByKeyVitalSignAndResultLessThan(String key_vitalSign, double highThreshold);
+
+    List<VitalSign> findByKeyVitalSignAndResultGreaterThan(String key_vitalSign, double lowThreshold);
+
+    List<VitalSign> findByKeyVitalSign(String key_vitalSign);
 }

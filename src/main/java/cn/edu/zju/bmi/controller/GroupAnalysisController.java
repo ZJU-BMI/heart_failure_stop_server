@@ -30,7 +30,7 @@ public class GroupAnalysisController {
             @RequestParam(ParameterName.END_INDEX) String endIdxStr,
             @RequestParam(ParameterName.TIME_STAMP) String timeStampStr,
             @RequestParam(ParameterName.USER_NAME) String userName
-    ){
+    ) throws Exception {
         Long timeStamp = Long.valueOf(timeStampStr);
         Integer startIdx = Integer.valueOf(startIdxStr);
         Integer endIdx = Integer.valueOf(endIdxStr);

@@ -16,14 +16,19 @@ import java.util.*;
 @Service
 public class GroupAnalysisService {
     private VisitIdentifierRepository visitIdentifierRepository;
+    private VitalSignRepository vitalSignRepository;
+
     // 由于此处需要翻页，由于我们的功能无法直接通过Pageable API实现，因此需要将查询结果缓存起来
     // 为了防止内存溢出，设定只同时支持对5个查询进行缓存，多出的即删除
     private CacheQueue cachePool;
+
+    // 以下4个Map一直驻留，不可改变，用于在筛选出合适的visit后，快速的获取展示Visit所需的信息
     private Map<String, PatientVisit> patientVisitMap;
     private Map<String, Patient> patientMap;
     private Map<String, List<Diagnosis>> diagnosisMap;
     private Map<String, String> hospitalMap;
     private Map<String, String> idMap;
+
     private SimpleDateFormat sdf =new SimpleDateFormat("yyyy-MM-dd" );
 
     @Autowired
@@ -32,10 +37,12 @@ public class GroupAnalysisService {
                                 PatientVisitRepository patientVisitRepository,
                                 DiagnosisRepository diagnosisRepository,
                                 HospitalMapRepository hospitalMapRepository,
-                                IdMappingRepository idMappingRepository
+                                IdMappingRepository idMappingRepository,
+                                VitalSignRepository vitalSignRepository
                                 )
     {
         this.visitIdentifierRepository = visitIdentifierRepository;
+        this.vitalSignRepository = vitalSignRepository;
         this.cachePool = new CacheQueue(5);
 
         List<PatientVisit> patientVisitList = patientVisitRepository.findAll();
@@ -89,7 +96,7 @@ public class GroupAnalysisService {
 
     public List<VisitInfoForGroupAnalysis> getVisitInfoForGroupAnalysisList(String filter, String userName,
                                                                             Long timeStamp, Integer startIdx,
-                                                                            Integer endIdx){
+                                                                            Integer endIdx) throws Exception {
         // 从群体到患者个体需要缓存查询结果以辅助分页（这部分没办法通过Spring 原生API做完）
         // 因此用userName+timeStamp做缓存结果的ID
         String id = userName+"_"+timeStamp;
@@ -154,7 +161,7 @@ public class GroupAnalysisService {
         return visitInfoForGroupAnalysisList;
     }
 
-    private List<VisitIdentifier> parseFilterAndSearchVisit(String filter){
+    private List<VisitIdentifier> parseFilterAndSearchVisit(String filter) throws Exception {
         // filter 应当是Json格式，转换为对象后，应当是一个list，list中的每一项的第一个元素代表了filter类型，之后的项代表了
         // 具体的过滤细节，依据每中filter自行决定。
         List<List<VisitIdentifier>> list = new ArrayList<>();
@@ -168,18 +175,17 @@ public class GroupAnalysisService {
             switch (itemName){
                 case ParameterName.AGE: list.add(parseAgeQuery(item)); break;
                 case ParameterName.SEX: list.add(parseSex(item));break;
+                case ParameterName.VITAL_SIGN: list.add(parseVitalSignAndUsingFirstRecordOfVisit(item)); break;
+                case ParameterName.LAB_TEST: break;
                 case ParameterName.ADMISSION_TIME: break;
-                case ParameterName.VITAL_SIGN: break;
                 case ParameterName.BIRTHDAY: break;
                 case ParameterName.HOSPITAL: break;
-                case "mainDiagnosis": break;
-                case "diagnosis": break;
-                case "operation": break;
-                case "medicine": break;
-                case "labTest": break;
-                case "machineLearningModel": break;
-
-                case "exam": break;
+                case ParameterName.MAIN_DIAGNOSIS: break;
+                case ParameterName.DIAGNOSIS: break;
+                case ParameterName.OPERATION: break;
+                case ParameterName.MEDICINE: break;
+                case ParameterName.MACHINE_LEARNING_MODEL: break;
+                case ParameterName.EXAM: break;
                 default: break;
             }
         }
@@ -233,12 +239,120 @@ public class GroupAnalysisService {
             System.out.println("maxAge and minAge not set");
         }
         else if(maxAge!=-365){
-            list = visitIdentifierRepository.findVisitIdentifierByAgeSmallerThan(maxAge);
+            list = visitIdentifierRepository.findAllVisit();
         }
         else {
             list = visitIdentifierRepository.findVisitIdentifierByAgeLargerThan(minAge);
         }
         return list;
+    }
+
+    private List<VisitIdentifier> parseVitalSignAndUsingFirstRecordOfVisit(JSONArray item) throws Exception {
+        // 这个函数由于要遍历vitalSign表，可能存在内存溢出风险，注意
+        // item = ["vitalSign", vitalSignType, low_threshold, high_threshold]
+        // 如果上限或下限未被设定，则取-1，代表全要，但是最好在前端禁止这种操作
+        String vitalSignType = (String)item.get(1);
+        int highThreshold = Integer.parseInt((String)item.get(3));
+        int lowThreshold = Integer.parseInt((String)item.get(2));
+
+        switch (vitalSignType) {
+            case ParameterName.SYSTOLIC_BLOOD_PRESSURE: {
+                Map<String, VitalSign> map = getVitalSignFirstRecordOfVisit("血压high", lowThreshold, highThreshold);
+                return mapToList(map);
+            }
+            case ParameterName.DIASTOLIC_BLOOD_PRESSURE: {
+                Map<String, VitalSign> map = getVitalSignFirstRecordOfVisit("血压Low", lowThreshold, highThreshold);
+                return mapToList(map);
+            }
+            case ParameterName.BMI: {
+                Map<String, VitalSign> heightMap = getVitalSignFirstRecordOfVisit("身高", -1, -1);
+                Map<String, VitalSign> weightMap = getVitalSignFirstRecordOfVisit("体重", -1, -1);
+                List<VisitIdentifier> list = new ArrayList<>();
+                for(String id: heightMap.keySet()){
+                    if(!weightMap.containsKey(id)){
+                        continue;
+                    }
+                    double height = heightMap.get(id).getResult();
+                    double weight = weightMap.get(id).getResult();
+                    double bmi = weight/(height*height)*10000;
+                    VitalSign vitalSign = heightMap.get(id);
+                    String unifiedPatientID = vitalSign.getKey().getUnifiedPatientID();
+                    String visitType = vitalSign.getKey().getVisitType();
+                    String visitID = vitalSign.getKey().getVisitID();
+                    String hospitalCode = vitalSign.getKey().getHospitalCode();
+
+                    if(highThreshold!=-1&&lowThreshold!=-1){
+                        if(bmi<highThreshold&&bmi>lowThreshold){
+                            list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+                        }
+                    }
+                    else if(highThreshold==-1&&lowThreshold==-1){
+                        list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+                    }
+                    else if(highThreshold!=-1){
+                        if(bmi<highThreshold&&bmi>12){
+                            list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+                        }
+                    }
+                    else {
+                        if(bmi>lowThreshold&&bmi<35){
+                            list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+                        }
+                    }
+                }
+                return list;
+            }
+            default:
+                throw new Exception("no case matched");
+        }
+    }
+
+    private List<VisitIdentifier> mapToList(Map<String, VitalSign> map){
+        List<VisitIdentifier> list = new ArrayList<>();
+        for(String key: map.keySet()){
+            VitalSign vitalSign = map.get(key);
+            String unifiedPatientID = vitalSign.getKey().getUnifiedPatientID();
+            String visitType = vitalSign.getKey().getVisitType();
+            String visitID = vitalSign.getKey().getVisitID();
+            String hospitalCode = vitalSign.getKey().getHospitalCode();
+            list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+        }
+        return list;
+    }
+
+    private Map<String, VitalSign> getVitalSignFirstRecordOfVisit(String type, int lowThreshold, int highThreshold){
+        List<VitalSign> list;
+        if(highThreshold!=-1&&lowThreshold!=-1){
+            list = vitalSignRepository.findByKeyVitalSignAndResultLessThanAndResultGreaterThan(
+                    type, highThreshold, lowThreshold);
+        }
+        else if(highThreshold==-1&&lowThreshold==-1){
+            list = vitalSignRepository.findByKeyVitalSign(type);
+        }
+        else if(highThreshold!=-1){
+            list = vitalSignRepository.findByKeyVitalSignAndResultLessThan(type, highThreshold);
+        }
+        else {
+            list = vitalSignRepository.findByKeyVitalSignAndResultGreaterThan(type, lowThreshold);
+        }
+
+        Map<String, VitalSign> map = new HashMap<>();
+        for(VitalSign vitalSign: list){
+            String unifiedPatientID = vitalSign.getKey().getUnifiedPatientID();
+            String visitType = vitalSign.getKey().getVisitType();
+            String visitID = vitalSign.getKey().getVisitID();
+            String hospitalCode = vitalSign.getKey().getHospitalCode();
+            String id = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            if(!map.containsKey(id)){
+                map.put(id, vitalSign);
+            }
+            else{
+                if(map.get(id).getRecordTime().after(vitalSign.getRecordTime())){
+                    map.put(id, vitalSign);
+                }
+            }
+        }
+        return map;
     }
 }
 

@@ -45,4 +45,11 @@ public class ParameterName {
     public static final String BMI = "bmi";
     public static final String BIRTHDAY = "birthday";
     public static final String HOSPITAL = "hospital";
+    public static final String MAIN_DIAGNOSIS = "mainDiagnosis";
+    public static final String DIAGNOSIS = "diagnosis";
+    public static final String OPERATION = "operation";
+    public static final String MEDICINE = "medicine";
+    public static final String LAB_TEST = "labTest";
+    public static final String MACHINE_LEARNING_MODEL = "machineLearningModel";
+    public static final String EXAM = "exam";
 }
