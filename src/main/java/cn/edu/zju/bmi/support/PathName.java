@@ -1,9 +1,12 @@
 package cn.edu.zju.bmi.support;
 
 public class PathName {
-    //Index
+    //group Analysis
+    public static final String GROUP_ANALYSIS_DATA = "/backend/data/groupAnalysis";
+    public static final String QUERY_WITH_FILTER = "/queryWithFilter";
 
-    //Trajectory Analysis
+
+    //individual Analysis
     public static final String INDIVIDUAL_ANALYSIS_DATA = "/backend/data/individualAnalysis";
     public static final String INDIVIDUAL_ANALYSIS_DATA_UNIFIED_PATIENT_ID = "/unifiedPatientID";
     public static final String INDIVIDUAL_ANALYSIS_DATA_BASIC_INFO ="/basicInfo";

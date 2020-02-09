@@ -31,4 +31,18 @@ public class ParameterName {
     public static final String MODEL_NAME = "modelName";
     public static final String MODEL_FUNCTION = "modelFunction";
     public static final String MODEL_INPUT = "modelInput";
+
+    public static final String FILTER = "filter";
+    public static final String TIME_STAMP = "timeStamp";
+    public static final String START_INDEX = "startIndex";
+    public static final String END_INDEX = "endIndex";
+    public static final String AGE = "age";
+    public static final String SEX = "sex";
+    public static final String ADMISSION_TIME = "admissionTime";
+    public static final String VITAL_SIGN = "vitalSign";
+    public static final String SYSTOLIC_BLOOD_PRESSURE = "systolicBloodPressure";
+    public static final String DIASTOLIC_BLOOD_PRESSURE = "diastolicBloodPressure";
+    public static final String BMI = "bmi";
+    public static final String BIRTHDAY = "birthday";
+    public static final String HOSPITAL = "hospital";
 }

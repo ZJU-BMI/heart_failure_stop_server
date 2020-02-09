@@ -10,7 +10,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Service
-public class GetSinglePatInfoService {
+public class IndividualAnalysisService {
     private DiagnosisRepository diagnosisRepository;
     private LabTestRepository labTestRepository;
     private OperationRepository operationRepository;
@@ -27,7 +27,7 @@ public class GetSinglePatInfoService {
     private static SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy/MM/dd HH:mm");
 
     @Autowired
-    public GetSinglePatInfoService(DiagnosisRepository diagnosisRepository, LabTestRepository labTestRepository,
+    public IndividualAnalysisService(DiagnosisRepository diagnosisRepository, LabTestRepository labTestRepository,
                                    OperationRepository operationRepository, OrdersRepository ordersRepository,
                                    PatientRepository patientRepository, VitalSignRepository vitalSignRepository,
                                    PatientVisitRepository patientVisitRepository, ExamRepository examRepository,

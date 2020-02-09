@@ -1,7 +1,7 @@
 package cn.edu.zju.bmi.controller;
 
 import cn.edu.zju.bmi.entity.POJO.*;
-import cn.edu.zju.bmi.service.GetSinglePatInfoService;
+import cn.edu.zju.bmi.service.IndividualAnalysisService;
 import cn.edu.zju.bmi.support.ParameterName;
 import cn.edu.zju.bmi.support.PathName;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,27 +15,27 @@ import java.util.Map;
 @RequestMapping(path= PathName.INDIVIDUAL_ANALYSIS_DATA)
 @RolesAllowed("ROLE_USER")
 public class IndividualAnalysisController {
-    private GetSinglePatInfoService getSinglePatInfoService;
+    private IndividualAnalysisService individualAnalysisService;
 
     @Autowired
-    public IndividualAnalysisController(GetSinglePatInfoService getSinglePatInfoService){
-        this.getSinglePatInfoService = getSinglePatInfoService;
+    public IndividualAnalysisController(IndividualAnalysisService individualAnalysisService){
+        this.individualAnalysisService = individualAnalysisService;
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_UNIFIED_PATIENT_ID)
     public Map<String, String> getUnifiedPatientID(@RequestParam(ParameterName.PATIENT_ID) String patientID,
                                                    @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode){
-        return getSinglePatInfoService.getUnifiedPatientID(patientID, hospitalCode);
+        return individualAnalysisService.getUnifiedPatientID(patientID, hospitalCode);
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_BASIC_INFO)
     public PatientBasicInfo getPatientBasicInfo(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID){
-        return getSinglePatInfoService.getPatientBasicInfo(unifiedPatientID);
+        return individualAnalysisService.getPatientBasicInfo(unifiedPatientID);
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_TRAJECTORY)
     public List<VisitInTrajectory> getTrajectory(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID){
-        return getSinglePatInfoService.getPatientTrajectory(unifiedPatientID);
+        return individualAnalysisService.getPatientTrajectory(unifiedPatientID);
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_VISIT_DETAILED_INFO)
@@ -43,7 +43,7 @@ public class IndividualAnalysisController {
                                                   @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
                                                   @RequestParam(ParameterName.VISIT_TYPE) String visitType,
                                                   @RequestParam(ParameterName.VISIT_ID) String visitID){
-        return getSinglePatInfoService.getVisitDetailedInfo(unifiedPatientID, hospitalCode, visitType, visitID);
+        return individualAnalysisService.getVisitDetailedInfo(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_LAB_TEST_SINGLE_ITEM_IN_ONE_VISIT)
@@ -52,7 +52,7 @@ public class IndividualAnalysisController {
                                           @RequestParam(ParameterName.VISIT_TYPE) String visitType,
                                           @RequestParam(ParameterName.VISIT_ID) String visitID,
                                           @RequestParam(ParameterName.ITEM_NAME) String itemName){
-        return getSinglePatInfoService.getLabTest(unifiedPatientID, hospitalCode, visitType, visitID, itemName);
+        return individualAnalysisService.getLabTest(unifiedPatientID, hospitalCode, visitType, visitID, itemName);
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_LAB_TEST_SINGLE_VISIT)
@@ -62,13 +62,13 @@ public class IndividualAnalysisController {
                    @RequestParam(ParameterName.VISIT_TYPE) String visitType,
                    @RequestParam(ParameterName.VISIT_ID) String visitID){
         // 这个借口在当前前端中并未被用到
-        return getSinglePatInfoService.getLabTest(unifiedPatientID, hospitalCode, visitType, visitID);
+        return individualAnalysisService.getLabTest(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_LAB_TEST_SINGLE_ITEM_TRACE)
     public List<LabTestResult> getLabTest(@RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
                                           @RequestParam(ParameterName.ITEM_NAME) String itemName){
-        return getSinglePatInfoService.getLabTest(unifiedPatientID, itemName);
+        return individualAnalysisService.getLabTest(unifiedPatientID, itemName);
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_ORDER)
@@ -76,7 +76,7 @@ public class IndividualAnalysisController {
                                              @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
                                              @RequestParam(ParameterName.VISIT_TYPE) String visitType,
                                              @RequestParam(ParameterName.VISIT_ID) String visitID){
-        return getSinglePatInfoService.getOrder(unifiedPatientID, hospitalCode, visitType, visitID);
+        return individualAnalysisService.getOrder(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_VITAL_SIGN)
@@ -84,7 +84,7 @@ public class IndividualAnalysisController {
                                                                   @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
                                                                   @RequestParam(ParameterName.VISIT_TYPE) String visitType,
                                                                   @RequestParam(ParameterName.VISIT_ID) String visitID){
-        return getSinglePatInfoService.getVitalSignOfVisit(unifiedPatientID, hospitalCode, visitType, visitID);
+        return individualAnalysisService.getVitalSignOfVisit(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
     @GetMapping(value = PathName.INDIVIDUAL_ANALYSIS_DATA_EXAM)
@@ -92,11 +92,11 @@ public class IndividualAnalysisController {
                                           @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
                                           @RequestParam(ParameterName.VISIT_TYPE) String visitType,
                                           @RequestParam(ParameterName.VISIT_ID) String visitID){
-        return getSinglePatInfoService.getExamResult(unifiedPatientID, hospitalCode, visitType, visitID);
+        return individualAnalysisService.getExamResult(unifiedPatientID, hospitalCode, visitType, visitID);
     }
 
     @GetMapping(value = PathName.LAB_TEST_NAME_DICT)
     public List<String> getLabTestNameList(){
-        return getSinglePatInfoService.getLabTestNameList();
+        return individualAnalysisService.getLabTestNameList();
     }
 }

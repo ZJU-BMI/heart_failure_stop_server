@@ -2,7 +2,7 @@ package cn.edu.zju.bmi.controller.test;
 
 import cn.edu.zju.bmi.entity.DAO.*;
 import cn.edu.zju.bmi.repository.*;
-import cn.edu.zju.bmi.service.GetSinglePatInfoService;
+import cn.edu.zju.bmi.service.IndividualAnalysisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,14 +21,14 @@ public class DataAccessTestController {
     private VitalSignRepository vitalSignRepository;
     private PatientRepository patientRepository;
     private ExamRepository examRepository;
-    private GetSinglePatInfoService getSinglePatInfoService;
+    private IndividualAnalysisService individualAnalysisService;
 
     @Autowired
     public DataAccessTestController(DiagnosisRepository diagnosisRepository, LabTestRepository labTestRepository,
                                     OperationRepository operationRepository, OrdersRepository ordersRepository,
                                     PatientRepository patientRepository, VitalSignRepository vitalSignRepository,
                                     PatientVisitRepository patientVisitRepository, ExamRepository examRepository,
-                                    GetSinglePatInfoService getSinglePatInfoService){
+                                    IndividualAnalysisService individualAnalysisService){
         this.diagnosisRepository = diagnosisRepository;
         this.labTestRepository = labTestRepository;
         this.operationRepository = operationRepository;
@@ -37,7 +37,7 @@ public class DataAccessTestController {
         this.vitalSignRepository = vitalSignRepository;
         this.patientVisitRepository = patientVisitRepository;
         this.examRepository = examRepository;
-        this.getSinglePatInfoService = getSinglePatInfoService;
+        this.individualAnalysisService = individualAnalysisService;
     }
 
     @GetMapping(value = "/diagnosis")
