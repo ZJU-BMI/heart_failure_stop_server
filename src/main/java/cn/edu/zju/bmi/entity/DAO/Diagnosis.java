@@ -1,6 +1,7 @@
 package cn.edu.zju.bmi.entity.DAO;
 
 import cn.edu.zju.bmi.entity.DAO.key.DiagnosisPrimaryKey;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -12,6 +13,7 @@ import javax.persistence.Table;
 @Entity
 @Data
 @Table(name="diagnosis")
+@AllArgsConstructor
 @NoArgsConstructor
 public class Diagnosis {
     @EmbeddedId

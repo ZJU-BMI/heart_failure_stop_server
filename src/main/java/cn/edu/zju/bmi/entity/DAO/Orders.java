@@ -1,7 +1,9 @@
 package cn.edu.zju.bmi.entity.DAO;
 
 import cn.edu.zju.bmi.entity.DAO.key.OrdersPrimaryKey;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
@@ -12,6 +14,8 @@ import java.util.Date;
 @Entity
 @Data
 @Table(name="orders")
+@AllArgsConstructor
+@NoArgsConstructor
 public class Orders {
     @EmbeddedId
     private OrdersPrimaryKey key;

@@ -1,5 +1,7 @@
 package cn.edu.zju.bmi.entity.DAO;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -10,6 +12,8 @@ import java.util.Date;
 @Entity
 @Data
 @Table(name="patient")
+@AllArgsConstructor
+@NoArgsConstructor
 public class Patient {
     @Id
     @Column(name = "unified_patient_id")

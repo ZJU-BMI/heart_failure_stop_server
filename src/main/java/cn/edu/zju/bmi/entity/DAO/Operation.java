@@ -1,7 +1,9 @@
 package cn.edu.zju.bmi.entity.DAO;
 
 import cn.edu.zju.bmi.entity.DAO.key.OperationPrimaryKey;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
@@ -11,6 +13,8 @@ import java.util.Date;
 
 @Entity
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name="operation")
 public class Operation {
     @EmbeddedId

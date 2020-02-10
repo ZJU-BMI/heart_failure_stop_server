@@ -1,6 +1,7 @@
 package cn.edu.zju.bmi.entity.DAO;
 
 import cn.edu.zju.bmi.entity.DAO.key.LabTestPrimaryKey;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -13,6 +14,7 @@ import java.util.Date;
 @Entity
 @Data
 @Table(name="lab_test_result")
+@AllArgsConstructor
 @NoArgsConstructor
 public class LabTest {
     @EmbeddedId

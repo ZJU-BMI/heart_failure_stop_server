@@ -1,5 +1,6 @@
 package cn.edu.zju.bmi.entity.DAO.key;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
@@ -7,6 +8,7 @@ import java.io.Serializable;
 
 @Data
 @Embeddable
+@NoArgsConstructor
 public class VitalSignPrimaryKey implements Serializable {
     @Column(name = "unified_patient_id")
     private String unifiedPatientID;

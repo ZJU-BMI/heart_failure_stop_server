@@ -8,7 +8,10 @@ import cn.edu.zju.bmi.support.TwoElementTuple;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -26,7 +29,9 @@ public class GroupAnalysisService {
     private OperationRepository operationRepository;
     private LabTestRepository labTestRepository;
     private OrdersRepository ordersRepository;
+    private MachineLearningDataPrepareService machineLearningDataPrepareService;
     private ExamRepository examRepository;
+    private RestTemplate restTemplate;
 
     // 由于此处需要翻页，由于我们的功能无法直接通过Pageable API实现，因此需要将查询结果缓存起来
     // 为了防止内存溢出，设定只同时支持对5个查询进行缓存，多出的即删除
@@ -41,6 +46,9 @@ public class GroupAnalysisService {
 
     private SimpleDateFormat sdf =new SimpleDateFormat("yyyy-MM-dd" );
 
+    @Value("${app.tensorflowServerAddress}")
+    private String tensorflowAddress;
+
     @Autowired
     public GroupAnalysisService(VisitIdentifierRepository visitIdentifierRepository,
                                 PatientRepository patientRepository,
@@ -52,8 +60,11 @@ public class GroupAnalysisService {
                                 VitalSignRepository vitalSignRepository,
                                 OperationRepository operationRepository,
                                 OrdersRepository ordersRepository,
+                                RestTemplate restTemplate,
+                                MachineLearningDataPrepareService machineLearningDataPrepareService,
                                 ExamRepository examRepository)
     {
+        this.machineLearningDataPrepareService = machineLearningDataPrepareService;
         this.visitIdentifierRepository = visitIdentifierRepository;
         this.patientVisitRepository = patientVisitRepository;
         this.vitalSignRepository = vitalSignRepository;
@@ -63,6 +74,7 @@ public class GroupAnalysisService {
         this.patientRepository = patientRepository;
         this.ordersRepository = ordersRepository;
         this.examRepository = examRepository;
+        this.restTemplate = restTemplate;
         this.cachePool = new CacheQueue(5);
 
         List<PatientVisit> patientVisitList = patientVisitRepository.findAll();
@@ -123,24 +135,20 @@ public class GroupAnalysisService {
         String id = userName+"_"+timeStamp;
         int realStartIndex = startIdx;
         int realEndIndex = endIdx;
-        if(cachePool.contains(id)){
-            if((cachePool.getContent(id).size()-1)<=startIdx){
-                return new ArrayList<>();
-            }
-            else if((cachePool.getContent(id).size())<=endIdx){
-                realEndIndex = cachePool.getContent(id).size();
-                return cachePool.getContent(id).subList(realStartIndex, realEndIndex);
-            }
-            else {
-                return cachePool.getContent(id).subList(realStartIndex, realEndIndex);
-            }
-
-        }
-        else{
+        if(!cachePool.contains(id)){
             List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
             List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
             cachePool.add(id, visitInfoForGroupAnalysisList);
-            return cachePool.getContent(id).subList(startIdx, endIdx);
+        }
+        if((cachePool.getContent(id).size()-1)<=startIdx){
+            return new ArrayList<>();
+        }
+        else if((cachePool.getContent(id).size())<=endIdx){
+            realEndIndex = cachePool.getContent(id).size();
+            return cachePool.getContent(id).subList(realStartIndex, realEndIndex);
+        }
+        else {
+            return cachePool.getContent(id).subList(realStartIndex, realEndIndex);
         }
     }
 
@@ -220,10 +228,23 @@ public class GroupAnalysisService {
                 case ParameterName.MEDICINE: list.add(selectVisitByMedicine(item)); break;
                 // 由于数据质量的原因，目前仅支持对超声心动图的查询
                 case ParameterName.EXAM: list.add(echoCardiogram(item)); break;
-                case ParameterName.MACHINE_LEARNING_MODEL: break;
                 default: break;
             }
         }
+
+        // 在上述筛选完成后，开始做机器学习算法的筛选
+        List<VisitIdentifier> visitIdentifierList = convertToLegalVisitList(list);
+        list = new ArrayList<>();
+        list.add(visitIdentifierList);
+
+        for(int i=0; i<jsonArray.length();i++) {
+            JSONArray item = (JSONArray) jsonArray.get(i);
+            String itemName = item.getString(0);
+            if(itemName.equals(ParameterName.MACHINE_LEARNING_MODEL)) {
+                list.add(selectVisitByModel(item, visitIdentifierList));
+            }
+        }
+
         return convertToLegalVisitList(list);
     }
 
@@ -316,6 +337,60 @@ public class GroupAnalysisService {
         }
 
         return visitIdentifierList;
+    }
+
+    private List<VisitIdentifier> selectVisitByModel(JSONArray item, List<VisitIdentifier> originList) throws Exception {
+        // item = ["machineLearning", unifiedModelName, platform, lowThreshold, highThreshold]
+        String[] modelNameArray = item.getString(1).split("_");
+        String modelCategory = modelNameArray[0];
+        String modelName = modelNameArray[1];
+        String modelFunction = modelNameArray[2];
+
+        double lowThreshold = item.getDouble(2);
+        double highThreshold = item.getDouble(3);
+        List<VisitIdentifier> newList = new ArrayList<>();
+
+        for (VisitIdentifier visitIdentifier : originList) {
+            String unifiedPatientID = visitIdentifier.getUnifiedPatientID();
+            String hospitalCode = visitIdentifier.getHospitalCode();
+            String visitType = visitIdentifier.getVisitType();
+            String visitID = visitIdentifier.getVisitID();
+            double value = 0;
+
+            // 此处会成为效率瓶颈。主要的瓶颈是没有实现批量化的数据获取和批量化的数据处理
+            // 目前先这么实现，以后想办法优化
+            String data = machineLearningDataPrepareService.fetchData(unifiedPatientID, hospitalCode, visitType, visitID,
+                    modelCategory, modelName, modelFunction);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> entity = new HttpEntity<>(data, headers);
+            String url = tensorflowAddress + modelCategory + "_" + modelName + "_" + modelFunction + ":predict";
+            try {
+                ResponseEntity<String> answer = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+                String valueStr = answer.getBody();
+                JSONObject jo = new JSONObject(valueStr);
+                value = ((JSONArray) ((JSONArray) jo.get("outputs")).get(0)).getDouble(0);
+                if (lowThreshold != -1 && highThreshold != -1) {
+                    if (value < highThreshold && value > lowThreshold) {
+                        newList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                    }
+                } else if (lowThreshold == -1 && highThreshold == -1) {
+                    newList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                } else if (highThreshold != -1) {
+                    if (value < highThreshold) {
+                        newList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                    }
+                } else {
+                    if (value > lowThreshold) {
+                        newList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                    }
+                }
+
+            } catch (Exception e) {
+                value = -1;
+            }
+        }
+        return newList;
     }
 
     private List<VisitIdentifier> selectVisitByMedicine(JSONArray item){

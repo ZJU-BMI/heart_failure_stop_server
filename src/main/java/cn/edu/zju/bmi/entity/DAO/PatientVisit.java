@@ -1,6 +1,9 @@
 package cn.edu.zju.bmi.entity.DAO;
 import cn.edu.zju.bmi.entity.DAO.key.PatientVisitPrimaryKey;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
@@ -10,6 +13,8 @@ import java.util.Date;
 @Entity
 @Data
 @Table(name="patient_visit")
+@AllArgsConstructor
+@NoArgsConstructor
 public class PatientVisit {
     @EmbeddedId
     private PatientVisitPrimaryKey key;

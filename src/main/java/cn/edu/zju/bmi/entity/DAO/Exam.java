@@ -1,6 +1,8 @@
 package cn.edu.zju.bmi.entity.DAO;
 import cn.edu.zju.bmi.entity.DAO.key.ExamPrimaryKey;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.util.Date;
@@ -8,6 +10,8 @@ import java.util.Date;
 @Entity
 @Data
 @Table(name="exam")
+@AllArgsConstructor
+@NoArgsConstructor
 public class Exam {
     @EmbeddedId
     private ExamPrimaryKey key;
