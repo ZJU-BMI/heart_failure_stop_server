@@ -19,4 +19,5 @@ public interface OrdersRepository extends JpaRepository<Orders, OrdersPrimaryKey
             String visitType,
             String hospitalCode,
             String orderClass);
+    List<Orders> findByOrderClassAndOrderCode(String orderClass, String orderCode);
 }

@@ -10,13 +10,23 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class GroupAnalysisService {
     private VisitIdentifierRepository visitIdentifierRepository;
     private VitalSignRepository vitalSignRepository;
+    private PatientVisitRepository patientVisitRepository;
+    private PatientRepository patientRepository;
+    private DiagnosisRepository diagnosisRepository;
+    private OperationRepository operationRepository;
+    private LabTestRepository labTestRepository;
+    private OrdersRepository ordersRepository;
+    private ExamRepository examRepository;
 
     // 由于此处需要翻页，由于我们的功能无法直接通过Pageable API实现，因此需要将查询结果缓存起来
     // 为了防止内存溢出，设定只同时支持对5个查询进行缓存，多出的即删除
@@ -37,12 +47,22 @@ public class GroupAnalysisService {
                                 PatientVisitRepository patientVisitRepository,
                                 DiagnosisRepository diagnosisRepository,
                                 HospitalMapRepository hospitalMapRepository,
+                                LabTestRepository labTestRepository,
                                 IdMappingRepository idMappingRepository,
-                                VitalSignRepository vitalSignRepository
-                                )
+                                VitalSignRepository vitalSignRepository,
+                                OperationRepository operationRepository,
+                                OrdersRepository ordersRepository,
+                                ExamRepository examRepository)
     {
         this.visitIdentifierRepository = visitIdentifierRepository;
+        this.patientVisitRepository = patientVisitRepository;
         this.vitalSignRepository = vitalSignRepository;
+        this.diagnosisRepository = diagnosisRepository;
+        this.labTestRepository = labTestRepository;
+        this.operationRepository = operationRepository;
+        this.patientRepository = patientRepository;
+        this.ordersRepository = ordersRepository;
+        this.examRepository = examRepository;
         this.cachePool = new CacheQueue(5);
 
         List<PatientVisit> patientVisitList = patientVisitRepository.findAll();
@@ -99,9 +119,22 @@ public class GroupAnalysisService {
                                                                             Integer endIdx) throws Exception {
         // 从群体到患者个体需要缓存查询结果以辅助分页（这部分没办法通过Spring 原生API做完）
         // 因此用userName+timeStamp做缓存结果的ID
+        // startIndex从0起算
         String id = userName+"_"+timeStamp;
+        int realStartIndex = startIdx;
+        int realEndIndex = endIdx;
         if(cachePool.contains(id)){
-            return cachePool.getContent(id).subList(startIdx, endIdx);
+            if((cachePool.getContent(id).size()-1)<=startIdx){
+                return new ArrayList<>();
+            }
+            else if((cachePool.getContent(id).size())<=endIdx){
+                realEndIndex = cachePool.getContent(id).size();
+                return cachePool.getContent(id).subList(realStartIndex, realEndIndex);
+            }
+            else {
+                return cachePool.getContent(id).subList(realStartIndex, realEndIndex);
+            }
+
         }
         else{
             List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
@@ -121,8 +154,8 @@ public class GroupAnalysisService {
             String id = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
 
             // 要求targetList必须能在几个map中都能找到
-            if(!diagnosisMap.containsKey(id)&&patientMap.containsKey(unifiedPatientID)&&
-                    patientVisitMap.containsKey(id)&&idMap.containsKey(unifiedPatientID+"_"+hospitalCode)){
+            if(!(diagnosisMap.containsKey(id)&& patientMap.containsKey(unifiedPatientID)&&
+                    patientVisitMap.containsKey(id)&&idMap.containsKey(unifiedPatientID+"_"+hospitalCode))){
                 continue;
             }
             String localPatientID = idMap.get(unifiedPatientID+"_"+hospitalCode);
@@ -173,19 +206,21 @@ public class GroupAnalysisService {
             JSONArray item = (JSONArray) jsonArray.get(i);
             String itemName = item.getString(0);
             switch (itemName){
-                case ParameterName.AGE: list.add(parseAgeQuery(item)); break;
-                case ParameterName.SEX: list.add(parseSex(item));break;
-                case ParameterName.VITAL_SIGN: list.add(parseVitalSignAndUsingFirstRecordOfVisit(item)); break;
-                case ParameterName.LAB_TEST: break;
-                case ParameterName.ADMISSION_TIME: break;
-                case ParameterName.BIRTHDAY: break;
-                case ParameterName.HOSPITAL: break;
-                case ParameterName.MAIN_DIAGNOSIS: break;
-                case ParameterName.DIAGNOSIS: break;
-                case ParameterName.OPERATION: break;
-                case ParameterName.MEDICINE: break;
+                case ParameterName.AGE: list.add(selectVisitByAge(item)); break;
+                case ParameterName.SEX: list.add(selectVisitBySex(item));break;
+                case ParameterName.VITAL_SIGN: list.add(selectVisitByVitalSignAndUsingFirstRecordOfVisit(item)); break;
+                case ParameterName.ADMISSION_TIME: list.add(selectVisitByAdmissionTime(item)); break;
+                case ParameterName.BIRTHDAY: list.add(selectVisitByBirthDay(item));break;
+                case ParameterName.HOSPITAL: list.add(selectVisitByHospital(item));break;
+                case ParameterName.LOS: list.add(selectVisitByLOS(item));break;
+                case ParameterName.MAIN_DIAGNOSIS: list.add(selectVisitByDiagnosis(item, "mainDiagnosis")); break;
+                case ParameterName.DIAGNOSIS: list.add(selectVisitByDiagnosis(item, "diagnosis")); break;
+                case ParameterName.OPERATION: list.add(selectVisitByOperation(item));break;
+                case ParameterName.LAB_TEST: list.add(selectVisitByLabTest(item)); break;
+                case ParameterName.MEDICINE: list.add(selectVisitByMedicine(item)); break;
+                // 由于数据质量的原因，目前仅支持对超声心动图的查询
+                case ParameterName.EXAM: list.add(echoCardiogram(item)); break;
                 case ParameterName.MACHINE_LEARNING_MODEL: break;
-                case ParameterName.EXAM: break;
                 default: break;
             }
         }
@@ -219,12 +254,360 @@ public class GroupAnalysisService {
         return targetList;
     }
 
-    private List<VisitIdentifier> parseSex(JSONArray item){
+    private List<VisitIdentifier> echoCardiogram(JSONArray item){
+        // item = ["exam", "type", int low_threshold, int high_threshold]
+        String type = item.getString(1);
+        double lowThreshold = item.getDouble(2);
+        double highThreshold = item.getDouble(3);
+        Pattern pattern = Pattern.compile("[^0-9]");
+
+        List<Exam> list = examRepository.findEchoCardioGram("超声心脏");
+        List<Exam> legalList = new ArrayList<>();
+        for(Exam exam: list){
+            String examPara = exam.getExamPara();
+            if(examPara.length()<30||(!examPara.contains(type))){
+                // 存在正常examPara的数据长度必然高于30
+                continue;
+            }
+            // 找到需要的type
+            int startIdx = examPara.indexOf(type);
+            int endIdx = Math.min(startIdx + 20, examPara.length());
+            String valueString = examPara.substring(startIdx, endIdx);
+            Matcher matcher = pattern.matcher(valueString);
+            double value;
+            try {
+                value=Double.parseDouble(matcher.replaceAll(" ").trim().split(" ")[0]);
+            }
+            catch (Exception e){
+                continue;
+            }
+            if(highThreshold!=-1&&lowThreshold!=-1){
+                if(value>lowThreshold&&value<highThreshold){
+                    legalList.add(exam);
+                }
+            }
+            else if(highThreshold==-1&&lowThreshold==-1){
+                legalList.add(exam);
+            }
+            else if(highThreshold!=-1){
+                if(value<highThreshold){
+                    legalList.add(exam);
+                }
+            }
+            else {
+                if(value>lowThreshold){
+                    legalList.add(exam);
+                }
+            }
+        }
+        List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
+        // 消除重复值
+        Map<String, VisitIdentifier> map = new HashMap<>();
+        for(Exam exam: legalList){
+            String unifiedPatientID = exam.getKey().getUnifiedPatientID();
+            String visitType = exam.getKey().getVisitType();
+            String visitID = exam.getKey().getVisitID();
+            String hospitalCode = exam.getKey().getHospitalCode();
+            String id = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            map.put(id, new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+        }
+        for(String key: map.keySet()){
+            visitIdentifierList.add(map.get(key));
+        }
+
+        return visitIdentifierList;
+    }
+
+    private List<VisitIdentifier> selectVisitByMedicine(JSONArray item){
+        // item = ["medicine", featureCode1, feature2,...]
+        List<Orders> ordersList = new ArrayList<>();
+        List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
+
+        for(int i=1; i< item.length(); i++){
+            String medicineCode = item.getString(i);
+            ordersList.addAll(ordersRepository.findByOrderClassAndOrderCode("A", medicineCode));
+        }
+        // 消除重复值
+        Map<String, VisitIdentifier> map = new HashMap<>();
+        for(Orders orders: ordersList){
+            String unifiedPatientID = orders.getKey().getUnifiedPatientID();
+            String visitType = orders.getKey().getVisitType();
+            String visitID = orders.getKey().getVisitID();
+            String hospitalCode = orders.getKey().getHospitalCode();
+            String id = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            map.put(id, new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+        }
+        for(String key: map.keySet()){
+            visitIdentifierList.add(map.get(key));
+        }
+        return visitIdentifierList;
+    }
+
+    private List<VisitIdentifier> selectVisitByLabTest(JSONArray item) throws Exception {
+        // item = ["labTest", [featureCode, dataType, value1, value2], [....], ....]
+        // dataType = {category, numerical}
+        List<LabTest> labTestList = new ArrayList<>();
+        for(int i=1; i<item.length(); i++){
+            JSONArray featureInfo = (JSONArray)item.get(i);
+            String featureCode = featureInfo.getString(0);
+            String featureType = featureInfo.getString(1);
+            if(featureType.equals("numerical")){
+                double lowThreshold = featureInfo.getDouble(2);
+                double highThreshold = featureInfo.getDouble(3);
+                if(lowThreshold!=-1&&highThreshold!=-1){
+                    labTestList.addAll(labTestRepository.findByItemAndValueBetween(featureCode, lowThreshold,
+                            highThreshold, ""));
+                }
+                else if(lowThreshold==-1&&highThreshold==-1){
+                    labTestList.addAll(labTestRepository.findByLabTestItemCode(featureCode));
+                    System.out.println("min value and max value are not set");
+                }
+                else if(highThreshold!=-1){
+                    labTestList.addAll(labTestRepository.findByItemAndValueGreaterThan(featureCode, lowThreshold,
+                            ""));
+                }
+                else {
+                    labTestList.addAll(labTestRepository.findByItemAndValueLessThan(featureCode,
+                            highThreshold, ""));
+                }
+            }
+            else if(featureType.equals("category")){
+                String value = featureInfo.getString(2);
+                labTestList.addAll(labTestRepository.findByItemAndValueIs(featureCode,
+                        value, ""));
+            }
+            else{
+                throw new Exception("lab test data type error");
+            }
+        }
+
+        // 消除重复值
+        Map<String, VisitIdentifier> map = new HashMap<>();
+        for(LabTest labTest : labTestList){
+            String unifiedPatientID = labTest.getKey().getUnifiedPatientID();
+            String visitType = labTest.getKey().getVisitType();
+            String visitID = labTest.getKey().getVisitID();
+            String hospitalCode = labTest.getKey().getHospitalCode();
+            String id = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            map.put(id, new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+        }
+        List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
+        for(String key: map.keySet()){
+            visitIdentifierList.add(map.get(key));
+        }
+        return visitIdentifierList;
+    }
+
+    private List<VisitIdentifier> selectVisitByOperation(JSONArray item){
+        // item = [type, operationCode1, operationCode2, ...]
+        // code follows ICD-9-CM3 procedure coding standard (default using first four digits)
+        List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
+        List<Operation> operationList = new ArrayList<>();
+        for(int i=1; i< item.length(); i++){
+            String code = item.getString(i);
+            operationList.addAll(operationRepository.findByOperationCodeLike("%"+code+"%"));
+        }
+        // 消除重复值
+        Map<String, VisitIdentifier> map = new HashMap<>();
+        for(Operation operation: operationList){
+            String unifiedPatientID = operation.getKey().getUnifiedPatientID();
+            String visitType = operation.getKey().getVisitType();
+            String visitID = operation.getKey().getVisitID();
+            String hospitalCode = operation.getKey().getHospitalCode();
+            String id = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            map.put(id, new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+        }
+        for(String key: map.keySet()){
+            visitIdentifierList.add(map.get(key));
+        }
+        return visitIdentifierList;
+    }
+
+    private List<VisitIdentifier> selectVisitByDiagnosis(JSONArray item, String type) throws Exception {
+        // item = [type, diagnosisCode1, diagnosisCode2, ...]
+        // type = {"mainDiagnosis", "diagnosis"}
+        // code follows ICD-10 diagnosis coding standard (default using first three digits)
+        List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
+        List<Diagnosis> diagnosisList = new ArrayList<>();
+        for(int i=1; i< item.length(); i++){
+            String code = item.getString(i);
+            if(type.equals("mainDiagnosis")){
+                diagnosisList.addAll(diagnosisRepository.findByMainDiagnosis("%"+code+"%", "3"));
+            }else if(type.equals("diagnosis")){
+                diagnosisList.addAll(diagnosisRepository.findByDiagnosis("%"+code+"%", "3","A"));
+            }
+            else{
+                throw new Exception("illegal diagnosis type name");
+            }
+        }
+        // 消除重复值
+        Map<String, VisitIdentifier> map = new HashMap<>();
+        for(Diagnosis diagnosis: diagnosisList){
+            String unifiedPatientID = diagnosis.getKey().getUnifiedPatientID();
+            String visitType = diagnosis.getKey().getVisitType();
+            String visitID = diagnosis.getKey().getVisitID();
+            String hospitalCode = diagnosis.getKey().getHospitalCode();
+            String id = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            map.put(id, new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+        }
+        for(String key: map.keySet()){
+            visitIdentifierList.add(map.get(key));
+        }
+        return visitIdentifierList;
+    }
+
+    private List<VisitIdentifier> selectVisitByLOS(JSONArray item){
+        // item = ["los", String low_threshold, String high_threshold]
+        // low_threshold and high_threshold, -1 if not set.
+
+        int lowThreshold = item.getInt(1);
+        int highThreshold = item.getInt(2);
+
+        List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
+        List<PatientVisit> patientVisitList = patientVisitRepository.findAll();
+
+        for(PatientVisit patientVisit: patientVisitList){
+            Date admissionTime = patientVisit.getAdmissionDateTime();
+            Date dischargeTime = patientVisit.getDischargeDateTime();
+            double los = ((double)(dischargeTime.getTime()-admissionTime.getTime()))/1000/3600/24;
+
+            boolean skipFlag = true;
+            if(lowThreshold!=-1&&highThreshold!=-1){
+                if(los<highThreshold&&los>lowThreshold){
+                    skipFlag=false;
+                }
+            }
+            else if(lowThreshold==-1&&highThreshold==-1){
+                skipFlag=false;
+            }
+            else if(highThreshold!=-1){
+                if(los<highThreshold){
+                    skipFlag=false;
+                }
+            }
+            else {
+                if(los>lowThreshold){
+                    skipFlag=false;
+                }
+            }
+
+            if(skipFlag) {
+                continue;
+            }
+
+            String unifiedPatientID = patientVisit.getKey().getUnifiedPatientID();
+            String visitType = patientVisit.getKey().getVisitType();
+            String visitID = patientVisit.getKey().getVisitID();
+            String hospitalCode = patientVisit.getKey().getHospitalCode();
+            visitIdentifierList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+        }
+        return visitIdentifierList;
+    }
+
+    private List<VisitIdentifier> selectVisitByHospital(JSONArray item){
+        // item = ["hospital", String hospitalCode, ...]
+        // 如果同时选择了多家医院，则以"或"逻辑返回数据
+        List<VisitIdentifier> list = new ArrayList<>();
+        for(int i=1; i<item.length();i++){
+            List<VisitIdentifier> list1 = visitIdentifierRepository.findVisitByHospitalCode(item.getString(i));
+            list.addAll(list1);
+        }
+        return list;
+    }
+
+    private List<VisitIdentifier> selectVisitByBirthDay(JSONArray item){
+        // item = ["admissionTime", String low_threshold, String high_threshold]
+        // low_threshold and high_threshold format: "yyyy-MM-dd", "-1" if not set.
+
+        Date lowThreshold = convertThresholdFromStringToDate(item.getString(1));
+        Date highThreshold = convertThresholdFromStringToDate(item.getString(2));
+
+        List<Patient> list;
+        if(lowThreshold!=null&&highThreshold!=null){
+            list = patientRepository.findByBirthdayBetween(lowThreshold, highThreshold);
+        }
+        else if(lowThreshold==null&&highThreshold==null){
+            list = patientRepository.findAll();
+            System.out.println("min admissionTime and max admissionTime not set");
+        }
+        else if(highThreshold!=null){
+            list = patientRepository.findByBirthdayBefore(highThreshold);
+        }
+        else {
+            list = patientRepository.findByBirthdayAfter(lowThreshold);
+        }
+
+        Set<String> legalPatientSet = new HashSet<>();
+        for(Patient patient: list){
+            legalPatientSet.add(patient.getUnifiedPatientID());
+        }
+
+        List<PatientVisit> patientVisitList = patientVisitRepository.findAll();
+
+        List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
+        for(PatientVisit patientVisit: patientVisitList){
+            String unifiedPatientID = patientVisit.getKey().getUnifiedPatientID();
+            String visitType = patientVisit.getKey().getVisitType();
+            String visitID = patientVisit.getKey().getVisitID();
+            String hospitalCode = patientVisit.getKey().getHospitalCode();
+            if(legalPatientSet.contains(unifiedPatientID)) {
+                visitIdentifierList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+            }
+        }
+        return visitIdentifierList;
+    }
+
+    private List<VisitIdentifier> selectVisitByAdmissionTime (JSONArray item){
+        // item = ["admissionTime", String low_threshold, String high_threshold]
+        // low_threshold and high_threshold format: "yyyy-MM-dd", "-1" if not set.
+
+        Date lowThreshold = convertThresholdFromStringToDate(item.getString(1));
+        Date highThreshold = convertThresholdFromStringToDate(item.getString(2));
+
+        List<PatientVisit> list;
+        if(lowThreshold!=null&&highThreshold!=null){
+            list = patientVisitRepository.findByAdmissionDateTimeBetween(lowThreshold, highThreshold);
+        }
+        else if(lowThreshold==null&&highThreshold==null){
+            list = patientVisitRepository.findAll();
+            System.out.println("min admissionTime and max admissionTime not set");
+        }
+        else if(highThreshold!=null){
+            list = patientVisitRepository.findByAdmissionDateTimeBefore(highThreshold);
+        }
+        else {
+            list = patientVisitRepository.findByAdmissionDateTimeAfter(lowThreshold);
+        }
+
+        List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
+        for(PatientVisit patientVisit: list){
+            String unifiedPatientID = patientVisit.getKey().getUnifiedPatientID();
+            String visitType = patientVisit.getKey().getVisitType();
+            String visitID = patientVisit.getKey().getVisitID();
+            String hospitalCode = patientVisit.getKey().getHospitalCode();
+            visitIdentifierList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+        }
+        return visitIdentifierList;
+    }
+
+    private Date convertThresholdFromStringToDate(String timeStr){
+        Date time;
+        try{
+            time = (timeStr.equals("-1"))?null:sdf.parse(timeStr);
+        }
+        catch (ParseException e){
+            time = null;
+            e.printStackTrace();
+        }
+        return time;
+    }
+
+    private List<VisitIdentifier> selectVisitBySex(JSONArray item){
         String sex = item.get(1).equals("male")?"男":"女";
         return visitIdentifierRepository.findVisitBySex(sex);
     }
 
-    private List<VisitIdentifier> parseAgeQuery(JSONArray item){
+    private List<VisitIdentifier> selectVisitByAge(JSONArray item){
         // item = ["age", int low_threshold, int high_threshold]
 
         // 此处由于一些技术原因，需要用365往上乘
@@ -247,7 +630,7 @@ public class GroupAnalysisService {
         return list;
     }
 
-    private List<VisitIdentifier> parseVitalSignAndUsingFirstRecordOfVisit(JSONArray item) throws Exception {
+    private List<VisitIdentifier> selectVisitByVitalSignAndUsingFirstRecordOfVisit(JSONArray item) throws Exception {
         // 这个函数由于要遍历vitalSign表，可能存在内存溢出风险，注意
         // item = ["vitalSign", vitalSignType, low_threshold, high_threshold]
         // 如果上限或下限未被设定，则取-1，代表全要，但是最好在前端禁止这种操作

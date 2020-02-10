@@ -11,4 +11,5 @@ public interface OperationRepository extends JpaRepository<Operation, OperationP
                                                                                             String visitID,
                                                                                             String visitType,
                                                                                             String hospitalCode);
+    List<Operation> findByOperationCodeLike(String code);
 }

@@ -26,4 +26,15 @@ public class Exam {
 
     @Column(name = "impression")
     private String impression;
+
+    public Exam(String unifiedPatientID, String hospitalCode, String visitType, String visitID, String examNo,
+                String examName, Date examDateTime, String examPara, String description, String impression){
+        this.key = new ExamPrimaryKey(unifiedPatientID, hospitalCode, visitType, visitID,
+                examNo);
+        this.examDateTime = examDateTime;
+        this.examName = examName;
+        this.examPara = examPara;
+        this.description = description;
+        this.impression = impression;
+    }
 }

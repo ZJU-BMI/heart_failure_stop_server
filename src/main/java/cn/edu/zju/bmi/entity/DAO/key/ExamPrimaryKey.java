@@ -1,5 +1,6 @@
 package cn.edu.zju.bmi.entity.DAO.key;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import javax.persistence.Column;
@@ -8,6 +9,7 @@ import java.io.Serializable;
 
 @Data
 @Embeddable
+@AllArgsConstructor
 public class ExamPrimaryKey implements Serializable {
     @Column(name = "unified_patient_id")
     private String unifiedPatientID;

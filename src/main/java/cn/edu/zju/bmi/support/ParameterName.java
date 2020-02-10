@@ -52,4 +52,5 @@ public class ParameterName {
     public static final String LAB_TEST = "labTest";
     public static final String MACHINE_LEARNING_MODEL = "machineLearningModel";
     public static final String EXAM = "exam";
+    public static final String LOS = "los";
 }

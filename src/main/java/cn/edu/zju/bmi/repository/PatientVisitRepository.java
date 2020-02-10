@@ -4,6 +4,7 @@ import cn.edu.zju.bmi.entity.DAO.PatientVisit;
 import cn.edu.zju.bmi.entity.DAO.key.PatientVisitPrimaryKey;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Date;
 import java.util.List;
 
 public interface PatientVisitRepository extends JpaRepository<PatientVisit, PatientVisitPrimaryKey> {
@@ -13,4 +14,7 @@ public interface PatientVisitRepository extends JpaRepository<PatientVisit, Pati
                                                                                                      String visitID,
                                                                                                      String visitType,
                                                                                                      String hospitalCode);
+    List<PatientVisit> findByAdmissionDateTimeBetween(Date startTime, Date endTime);
+    List<PatientVisit> findByAdmissionDateTimeAfter(Date startTime);
+    List<PatientVisit> findByAdmissionDateTimeBefore(Date endTime);
 }

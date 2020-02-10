@@ -38,4 +38,11 @@ public interface VisitIdentifierRepository extends JpaRepository<VisitIdentifier
             + "from cn.edu.zju.bmi.entity.DAO.PatientVisit u, cn.edu.zju.bmi.entity.DAO.Patient l " +
             "where l.sex=:sex and l.unifiedPatientID=u.key.unifiedPatientID")
     List<VisitIdentifier> findVisitBySex(@Param("sex") String sex);
+
+    @Query(value = "select " +
+            "new cn.edu.zju.bmi.entity.POJO.VisitIdentifier(" +
+            "u.key.unifiedPatientID, u.key.hospitalCode, u.key.visitType, u.key.visitID)"
+            + "from cn.edu.zju.bmi.entity.DAO.PatientVisit u, cn.edu.zju.bmi.entity.DAO.Patient l " +
+            "where u.key.hospitalCode=:hospitalCode and l.unifiedPatientID=u.key.unifiedPatientID")
+    List<VisitIdentifier> findVisitByHospitalCode(@Param("hospitalCode") String hospitalCode);
 }

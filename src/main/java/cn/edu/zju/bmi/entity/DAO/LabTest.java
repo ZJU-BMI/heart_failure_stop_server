@@ -2,6 +2,7 @@ package cn.edu.zju.bmi.entity.DAO;
 
 import cn.edu.zju.bmi.entity.DAO.key.LabTestPrimaryKey;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
@@ -12,6 +13,7 @@ import java.util.Date;
 @Entity
 @Data
 @Table(name="lab_test_result")
+@NoArgsConstructor
 public class LabTest {
     @EmbeddedId
     private LabTestPrimaryKey key;
@@ -30,4 +32,15 @@ public class LabTest {
 
     @Column(name = "result")
     private String result;
+
+    public LabTest(String unifiedPatientID, String hospitalCode, String visitType, String visitID, String labTestNo,
+                   String labTestCode, String labTestName, Date executeDate, String unit, String result){
+        this.key = new LabTestPrimaryKey(unifiedPatientID, hospitalCode, visitType,
+                visitID, labTestNo);
+        this.labTestItemCode = labTestCode;
+        this.labTestItemName = labTestName;
+        this.executeDate = executeDate;
+        this.units = unit;
+        this.result = result;
+    }
 }
