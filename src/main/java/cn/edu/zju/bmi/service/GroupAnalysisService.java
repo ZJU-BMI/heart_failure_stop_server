@@ -4,6 +4,7 @@ import cn.edu.zju.bmi.entity.POJO.VisitIdentifier;
 import cn.edu.zju.bmi.entity.POJO.VisitInfoForGroupAnalysis;
 import cn.edu.zju.bmi.repository.*;
 import cn.edu.zju.bmi.support.ParameterName;
+import cn.edu.zju.bmi.support.StringResponse;
 import cn.edu.zju.bmi.support.TwoElementTuple;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -126,13 +127,25 @@ public class GroupAnalysisService {
         }
     }
 
+    public StringResponse queryDataAccordingToFilter(String filter, String userName, String queryID)
+        throws Exception{
+
+        List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
+        List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
+        String id = userName+"_"+queryID;
+        cachePool.add(id, visitInfoForGroupAnalysisList);
+        return new StringResponse(String.valueOf(visitInfoForGroupAnalysisList.size()));
+    }
+
     public List<VisitInfoForGroupAnalysis> getVisitInfoForGroupAnalysisList(String filter, String userName,
-                                                                            Long timeStamp, Integer startIdx,
-                                                                            Integer endIdx) throws Exception {
+                                                                            String queryID, Integer startIdx,
+                                                                            Integer endIdx)
+            throws Exception {
+        // 由于cacheQueue有限，可能需要的数据已经被覆盖，因此也要传filter，以在丢失数据的情况下马上开始重找
         // 从群体到患者个体需要缓存查询结果以辅助分页（这部分没办法通过Spring 原生API做完）
         // 因此用userName+timeStamp做缓存结果的ID
         // startIndex从0起算
-        String id = userName+"_"+timeStamp;
+        String id = userName+"_"+queryID;
         int realStartIndex = startIdx;
         int realEndIndex = endIdx;
         if(!cachePool.contains(id)){
@@ -225,9 +238,10 @@ public class GroupAnalysisService {
                 case ParameterName.DIAGNOSIS: list.add(selectVisitByDiagnosis(item, "diagnosis")); break;
                 case ParameterName.OPERATION: list.add(selectVisitByOperation(item));break;
                 case ParameterName.LAB_TEST: list.add(selectVisitByLabTest(item)); break;
+                case ParameterName.VISIT_TYPE: list.add(selectVisitByVisitType(item)); break;
                 case ParameterName.MEDICINE: list.add(selectVisitByMedicine(item)); break;
                 // 由于数据质量的原因，目前仅支持对超声心动图的查询
-                case ParameterName.EXAM: list.add(echoCardiogram(item)); break;
+                case ParameterName.EXAM: list.add(selectVisitByExam(item)); break;
                 default: break;
             }
         }
@@ -275,7 +289,7 @@ public class GroupAnalysisService {
         return targetList;
     }
 
-    private List<VisitIdentifier> echoCardiogram(JSONArray item){
+    private List<VisitIdentifier> selectVisitByExam(JSONArray item){
         // item = ["exam", "type", int low_threshold, int high_threshold]
         String type = item.getString(1);
         double lowThreshold = item.getDouble(2);
@@ -532,7 +546,7 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByLOS(JSONArray item){
-        // item = ["los", String low_threshold, String high_threshold]
+        // item = ["los", int low_threshold, int high_threshold]
         // low_threshold and high_threshold, -1 if not set.
 
         int lowThreshold = item.getInt(1);
@@ -579,6 +593,23 @@ public class GroupAnalysisService {
         return visitIdentifierList;
     }
 
+    private List<VisitIdentifier> selectVisitByVisitType(JSONArray item){
+        // item = ["visitType", type]
+        // "住院" or "门诊"
+
+        List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
+        List<PatientVisit> patientVisitList = patientVisitRepository.findByKeyVisitType(item.getString(1));
+
+        for(PatientVisit patientVisit: patientVisitList){
+            String unifiedPatientID = patientVisit.getKey().getUnifiedPatientID();
+            String visitType = patientVisit.getKey().getVisitType();
+            String visitID = patientVisit.getKey().getVisitID();
+            String hospitalCode = patientVisit.getKey().getHospitalCode();
+            visitIdentifierList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+        }
+        return visitIdentifierList;
+    }
+
     private List<VisitIdentifier> selectVisitByHospital(JSONArray item){
         // item = ["hospital", String hospitalCode, ...]
         // 如果同时选择了多家医院，则以"或"逻辑返回数据
@@ -591,7 +622,7 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByBirthDay(JSONArray item){
-        // item = ["admissionTime", String low_threshold, String high_threshold]
+        // item = ["birthday", String low_threshold, String high_threshold]
         // low_threshold and high_threshold format: "yyyy-MM-dd", "-1" if not set.
 
         Date lowThreshold = convertThresholdFromStringToDate(item.getString(1));

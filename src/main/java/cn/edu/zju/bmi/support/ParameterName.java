@@ -33,7 +33,6 @@ public class ParameterName {
     public static final String MODEL_INPUT = "modelInput";
 
     public static final String FILTER = "filter";
-    public static final String TIME_STAMP = "timeStamp";
     public static final String START_INDEX = "startIndex";
     public static final String END_INDEX = "endIndex";
     public static final String AGE = "age";
@@ -53,4 +52,5 @@ public class ParameterName {
     public static final String MACHINE_LEARNING_MODEL = "machineLearningModel";
     public static final String EXAM = "exam";
     public static final String LOS = "los";
+    public static final String QUERY_ID = "queryID";
 }

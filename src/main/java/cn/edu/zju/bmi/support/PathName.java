@@ -4,6 +4,7 @@ public class PathName {
     //group Analysis
     public static final String GROUP_ANALYSIS_DATA = "/backend/data/groupAnalysis";
     public static final String QUERY_WITH_FILTER = "/queryWithFilter";
+    public static final String GET_VISIT_INFO = "/getVisitInfo";
 
 
     //individual Analysis

@@ -17,4 +17,5 @@ public interface PatientVisitRepository extends JpaRepository<PatientVisit, Pati
     List<PatientVisit> findByAdmissionDateTimeBetween(Date startTime, Date endTime);
     List<PatientVisit> findByAdmissionDateTimeAfter(Date startTime);
     List<PatientVisit> findByAdmissionDateTimeBefore(Date endTime);
+    List<PatientVisit> findByKeyVisitType(String visitType);
 }

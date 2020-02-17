@@ -3,6 +3,7 @@ import cn.edu.zju.bmi.entity.POJO.VisitInfoForGroupAnalysis;
 import cn.edu.zju.bmi.service.GroupAnalysisService;
 import cn.edu.zju.bmi.support.ParameterName;
 import cn.edu.zju.bmi.support.PathName;
+import cn.edu.zju.bmi.support.StringResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,17 +24,27 @@ public class GroupAnalysisController {
         this.groupAnalysisService = groupAnalysisService;
     }
 
-    @PostMapping(value = PathName.QUERY_WITH_FILTER)
-    public List<VisitInfoForGroupAnalysis> updatePreprocess(
+    @PostMapping(value = PathName.GET_VISIT_INFO)
+    public List<VisitInfoForGroupAnalysis> getVisitInfo(
             @RequestParam(ParameterName.FILTER) String filter,
             @RequestParam(ParameterName.START_INDEX) String startIdxStr,
             @RequestParam(ParameterName.END_INDEX) String endIdxStr,
-            @RequestParam(ParameterName.TIME_STAMP) String timeStampStr,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
             @RequestParam(ParameterName.USER_NAME) String userName
     ) throws Exception {
-        Long timeStamp = Long.valueOf(timeStampStr);
         Integer startIdx = Integer.valueOf(startIdxStr);
         Integer endIdx = Integer.valueOf(endIdxStr);
-        return groupAnalysisService.getVisitInfoForGroupAnalysisList(filter, userName, timeStamp, startIdx, endIdx);
+        return groupAnalysisService.getVisitInfoForGroupAnalysisList(filter, userName, queryID, startIdx,
+                endIdx);
+    }
+
+    @PostMapping(value = PathName.QUERY_WITH_FILTER)
+    public StringResponse queryWithFilter(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        // 返回的是该查询对应的visit数量
+        return groupAnalysisService.queryDataAccordingToFilter(filter, userName, queryID);
     }
 }
