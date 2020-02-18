@@ -1,4 +1,5 @@
 package cn.edu.zju.bmi.controller;
+import cn.edu.zju.bmi.entity.POJO.SexInfo;
 import cn.edu.zju.bmi.entity.POJO.VisitInfoForGroupAnalysis;
 import cn.edu.zju.bmi.service.GroupAnalysisService;
 import cn.edu.zju.bmi.support.ParameterName;
@@ -46,5 +47,14 @@ public class GroupAnalysisController {
     ) throws Exception {
         // 返回的是该查询对应的visit数量
         return groupAnalysisService.queryDataAccordingToFilter(filter, userName, queryID);
+    }
+
+    @PostMapping(value = PathName.GET_SEX_INFO)
+    public SexInfo sexInfo(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        return groupAnalysisService.getSexInfo(filter, userName, queryID);
     }
 }

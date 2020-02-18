@@ -29,8 +29,10 @@ public interface VisitIdentifierRepository extends JpaRepository<VisitIdentifier
     @Query(value = "select " +
             "new cn.edu.zju.bmi.entity.POJO.VisitIdentifier(" +
             "u.key.unifiedPatientID, u.key.hospitalCode, u.key.visitType, u.key.visitID)"
-            + "from cn.edu.zju.bmi.entity.DAO.PatientVisit u ")
-    List<VisitIdentifier> findAllVisit();
+            + "from cn.edu.zju.bmi.entity.DAO.PatientVisit u, cn.edu.zju.bmi.entity.DAO.Patient l " +
+            "where u.key.unifiedPatientID = l.unifiedPatientID and " +
+            "?1>= (FUNCTION('DATEDIFF', u.admissionDateTime, l.birthday))")
+    List<VisitIdentifier> findVisitIdentifierByAgeSmallerThan(int maxAge);
 
     @Query(value = "select " +
             "new cn.edu.zju.bmi.entity.POJO.VisitIdentifier(" +

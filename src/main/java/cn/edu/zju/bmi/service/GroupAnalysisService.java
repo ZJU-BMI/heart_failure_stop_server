@@ -1,5 +1,6 @@
 package cn.edu.zju.bmi.service;
 import cn.edu.zju.bmi.entity.DAO.*;
+import cn.edu.zju.bmi.entity.POJO.SexInfo;
 import cn.edu.zju.bmi.entity.POJO.VisitIdentifier;
 import cn.edu.zju.bmi.entity.POJO.VisitInfoForGroupAnalysis;
 import cn.edu.zju.bmi.repository.*;
@@ -125,6 +126,25 @@ public class GroupAnalysisService {
             String localPatientID = idMapping.getHospitalPatID();
             idMap.put(unifiedPatientID+"_"+hospitalCode, localPatientID);
         }
+    }
+
+    public SexInfo getSexInfo(String filter, String userName, String queryID) throws Exception {
+        String id = userName+"_"+queryID;
+        if(!cachePool.contains(id)){
+            List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
+            List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
+            cachePool.add(id, visitInfoForGroupAnalysisList);
+        }
+        // 直接通过visitInfoForGroupAnalysisList中的信息进行统计
+        int male = 0;
+        int female = 0;
+        List<VisitInfoForGroupAnalysis> list = cachePool.getContent(id);
+        for(VisitInfoForGroupAnalysis visitInfoForGroupAnalysis: list){
+            String sex = visitInfoForGroupAnalysis.getSex();
+            if(sex.equals("男")){male+=1;}
+            if(sex.equals("女")){female+=1;}
+        }
+        return new SexInfo(male, female);
     }
 
     public StringResponse queryDataAccordingToFilter(String filter, String userName, String queryID)
@@ -360,8 +380,8 @@ public class GroupAnalysisService {
         String modelName = modelNameArray[1];
         String modelFunction = modelNameArray[2];
 
-        double lowThreshold = item.getDouble(2);
-        double highThreshold = item.getDouble(3);
+        double lowThreshold = item.getDouble(3)/100;
+        double highThreshold = item.getDouble(4)/100;
         List<VisitIdentifier> newList = new ArrayList<>();
 
         for (VisitIdentifier visitIdentifier : originList) {
@@ -615,7 +635,8 @@ public class GroupAnalysisService {
         // 如果同时选择了多家医院，则以"或"逻辑返回数据
         List<VisitIdentifier> list = new ArrayList<>();
         for(int i=1; i<item.length();i++){
-            List<VisitIdentifier> list1 = visitIdentifierRepository.findVisitByHospitalCode(item.getString(i));
+            JSONArray jsonArray = (JSONArray)item.get(i);
+            List<VisitIdentifier> list1 = visitIdentifierRepository.findVisitByHospitalCode(jsonArray.getString(0));
             list.addAll(list1);
         }
         return list;
@@ -709,7 +730,7 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitBySex(JSONArray item){
-        String sex = item.get(1).equals("male")?"男":"女";
+        String sex = (item.get(1).equals("male"))?"男":"女";
         return visitIdentifierRepository.findVisitBySex(sex);
     }
 
@@ -728,7 +749,7 @@ public class GroupAnalysisService {
             System.out.println("maxAge and minAge not set");
         }
         else if(maxAge!=-365){
-            list = visitIdentifierRepository.findAllVisit();
+            list = visitIdentifierRepository.findVisitIdentifierByAgeSmallerThan(maxAge);
         }
         else {
             list = visitIdentifierRepository.findVisitIdentifierByAgeLargerThan(minAge);
@@ -772,20 +793,20 @@ public class GroupAnalysisService {
 
                     if(highThreshold!=-1&&lowThreshold!=-1){
                         if(bmi<highThreshold&&bmi>lowThreshold){
-                            list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+                            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
                         }
                     }
                     else if(highThreshold==-1&&lowThreshold==-1){
-                        list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+                        list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
                     }
                     else if(highThreshold!=-1){
-                        if(bmi<highThreshold&&bmi>12){
-                            list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+                        if(bmi<highThreshold&&bmi>5){
+                            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
                         }
                     }
                     else {
-                        if(bmi>lowThreshold&&bmi<35){
-                            list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+                        if(bmi>lowThreshold&&bmi<40){
+                            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
                         }
                     }
                 }
@@ -804,7 +825,7 @@ public class GroupAnalysisService {
             String visitType = vitalSign.getKey().getVisitType();
             String visitID = vitalSign.getKey().getVisitID();
             String hospitalCode = vitalSign.getKey().getHospitalCode();
-            list.add(new VisitIdentifier(unifiedPatientID, visitType, visitID, hospitalCode));
+            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
         }
         return list;
     }
