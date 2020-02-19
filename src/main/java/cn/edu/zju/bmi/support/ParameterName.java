@@ -52,5 +52,7 @@ public class ParameterName {
     public static final String MACHINE_LEARNING_MODEL = "machineLearningModel";
     public static final String EXAM = "exam";
     public static final String LOS = "los";
+    public static final String FATHER_QUERY_ID = "fatherQueryID";
     public static final String QUERY_ID = "queryID";
+    public static final String NEW_CONDITION = "newCondition";
 }

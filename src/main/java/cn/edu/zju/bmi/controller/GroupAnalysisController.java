@@ -49,6 +49,18 @@ public class GroupAnalysisController {
         return groupAnalysisService.queryDataAccordingToFilter(filter, userName, queryID);
     }
 
+    @PostMapping(value = PathName.QUERY_WITH_FATHER_QUERY_AND_NEW_CONDITION)
+    public StringResponse queryWithFatherQueryAndNewCondition(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.FATHER_QUERY_ID) String fatherQueryID,
+            @RequestParam(ParameterName.NEW_CONDITION) String newCondition,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        return groupAnalysisService.queryDataByFatherQueryAndNewCondition(filter, userName, fatherQueryID, queryID,
+                newCondition);
+    }
+
     @PostMapping(value = PathName.GET_SEX_INFO)
     public SexInfo sexInfo(
             @RequestParam(ParameterName.FILTER) String filter,

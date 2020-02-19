@@ -77,7 +77,7 @@ public class GroupAnalysisService {
         this.ordersRepository = ordersRepository;
         this.examRepository = examRepository;
         this.restTemplate = restTemplate;
-        this.cachePool = new CacheQueue(5);
+        this.cachePool = new CacheQueue(30);
 
         List<PatientVisit> patientVisitList = patientVisitRepository.findAll();
         List<Patient> patientList = patientRepository.findAll();
@@ -154,6 +154,40 @@ public class GroupAnalysisService {
         List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
         String id = userName+"_"+queryID;
         cachePool.add(id, visitInfoForGroupAnalysisList);
+        return new StringResponse(String.valueOf(visitInfoForGroupAnalysisList.size()));
+    }
+
+    public StringResponse queryDataByFatherQueryAndNewCondition(String filter, String userName, String fatherQueryID,
+                                                                String queryID, String newCondition)
+            throws Exception{
+
+        String fatherID = userName+"_"+fatherQueryID;
+        if(!cachePool.contains(fatherID)){
+            // 如果父节点已经被覆盖，则需要重新获取
+            List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
+            List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
+            cachePool.add(fatherID, visitInfoForGroupAnalysisList);
+        }
+
+        // 重新筛选数据
+        List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = new ArrayList<>();
+        List<VisitIdentifier> newFilterList =  parseFilterAndSearchVisit(newCondition);
+        Set<String> set = new HashSet<>();
+        for(VisitIdentifier visitIdentifier: newFilterList){
+            String id = visitIdentifier.getUnifiedPatientID()+"_"+visitIdentifier.getHospitalCode()+"_"+
+                    visitIdentifier.getVisitType()+"_"+visitIdentifier.getVisitID();
+            set.add(id);
+        }
+        for(VisitInfoForGroupAnalysis visitInfoForGroupAnalysis: cachePool.getContent(fatherID)){
+            String idToCompare = visitInfoForGroupAnalysis.getUnifiedPatientID()+"_"+
+                    visitInfoForGroupAnalysis.getHospitalCode()+"_"+ visitInfoForGroupAnalysis.getVisitType()+"_"+
+                    visitInfoForGroupAnalysis.getVisitID();
+            if(set.contains(idToCompare)){
+                visitInfoForGroupAnalysisList.add(visitInfoForGroupAnalysis);
+            }
+        }
+        cachePool.add(userName+"_"+queryID, visitInfoForGroupAnalysisList);
+
         return new StringResponse(String.valueOf(visitInfoForGroupAnalysisList.size()));
     }
 
@@ -245,7 +279,7 @@ public class GroupAnalysisService {
         JSONArray jsonArray = (JSONArray) jo.get("filter");
         for(int i=0; i<jsonArray.length();i++){
             JSONArray item = (JSONArray) jsonArray.get(i);
-            String itemName = item.getString(0);
+            String itemName = item.getString(1);
             switch (itemName){
                 case ParameterName.AGE: list.add(selectVisitByAge(item)); break;
                 case ParameterName.SEX: list.add(selectVisitBySex(item));break;
@@ -273,7 +307,7 @@ public class GroupAnalysisService {
 
         for(int i=0; i<jsonArray.length();i++) {
             JSONArray item = (JSONArray) jsonArray.get(i);
-            String itemName = item.getString(0);
+            String itemName = item.getString(1);
             if(itemName.equals(ParameterName.MACHINE_LEARNING_MODEL)) {
                 list.add(selectVisitByModel(item, visitIdentifierList));
             }
@@ -310,10 +344,10 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByExam(JSONArray item){
-        // item = ["exam", "type", int low_threshold, int high_threshold]
-        String type = item.getString(1);
-        double lowThreshold = item.getDouble(2);
-        double highThreshold = item.getDouble(3);
+        // item = [isInherit, "exam", "type", int low_threshold, int high_threshold]
+        String type = item.getString(2);
+        double lowThreshold = item.getDouble(3);
+        double highThreshold = item.getDouble(4);
         Pattern pattern = Pattern.compile("[^0-9]");
 
         List<Exam> list = examRepository.findEchoCardioGram("超声心脏");
@@ -428,11 +462,11 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByMedicine(JSONArray item){
-        // item = ["medicine", featureCode1, feature2,...]
+        // item = [isInherit, "medicine", featureCode1, feature2,...]
         List<Orders> ordersList = new ArrayList<>();
         List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
 
-        for(int i=1; i< item.length(); i++){
+        for(int i=2; i< item.length(); i++){
             String medicineCode = item.getString(i);
             ordersList.addAll(ordersRepository.findByOrderClassAndOrderCode("A", medicineCode));
         }
@@ -453,41 +487,38 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByLabTest(JSONArray item) throws Exception {
-        // item = ["labTest", [featureCode, dataType, value1, value2], [....], ....]
-        // dataType = {category, numerical}
+        // item = [isInherit, "labTest", code, numerical, value1, value2, name, unit] or
+        // item = [isInherit, "labTest", code, categorical, value, name, unit]
         List<LabTest> labTestList = new ArrayList<>();
-        for(int i=1; i<item.length(); i++){
-            JSONArray featureInfo = (JSONArray)item.get(i);
-            String featureCode = featureInfo.getString(0);
-            String featureType = featureInfo.getString(1);
-            if(featureType.equals("numerical")){
-                double lowThreshold = featureInfo.getDouble(2);
-                double highThreshold = featureInfo.getDouble(3);
-                if(lowThreshold!=-1&&highThreshold!=-1){
-                    labTestList.addAll(labTestRepository.findByItemAndValueBetween(featureCode, lowThreshold,
-                            highThreshold, ""));
-                }
-                else if(lowThreshold==-1&&highThreshold==-1){
-                    labTestList.addAll(labTestRepository.findByLabTestItemCode(featureCode));
-                    System.out.println("min value and max value are not set");
-                }
-                else if(highThreshold!=-1){
-                    labTestList.addAll(labTestRepository.findByItemAndValueGreaterThan(featureCode, lowThreshold,
-                            ""));
-                }
-                else {
-                    labTestList.addAll(labTestRepository.findByItemAndValueLessThan(featureCode,
-                            highThreshold, ""));
-                }
+        String featureCode = item.getString(2);
+        String featureType = item.getString(3);
+        if(featureType.equals("numerical")){
+            double lowThreshold = item.getDouble(4);
+            double highThreshold = item.getDouble(5);
+            if(lowThreshold!=-1&&highThreshold!=-1){
+                labTestList.addAll(labTestRepository.findByItemAndValueBetween(featureCode, lowThreshold,
+                        highThreshold, ""));
             }
-            else if(featureType.equals("category")){
-                String value = featureInfo.getString(2);
-                labTestList.addAll(labTestRepository.findByItemAndValueIs(featureCode,
-                        value, ""));
+            else if(lowThreshold==-1&&highThreshold==-1){
+                labTestList.addAll(labTestRepository.findByLabTestItemCode(featureCode));
+                System.out.println("min value and max value are not set");
             }
-            else{
-                throw new Exception("lab test data type error");
+            else if(highThreshold!=-1){
+                labTestList.addAll(labTestRepository.findByItemAndValueGreaterThan(featureCode, lowThreshold,
+                        ""));
             }
+            else {
+                labTestList.addAll(labTestRepository.findByItemAndValueLessThan(featureCode,
+                        highThreshold, ""));
+            }
+        }
+        else if(featureType.equals("category")){
+            String value = item.getString(4);
+            labTestList.addAll(labTestRepository.findByItemAndValueIs(featureCode,
+                    value, ""));
+        }
+        else{
+            throw new Exception("lab test data type error");
         }
 
         // 消除重复值
@@ -508,11 +539,11 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByOperation(JSONArray item){
-        // item = [type, operationCode1, operationCode2, ...]
+        // item = [isInherit, type, operationCode1, operationCode2, ...]
         // code follows ICD-9-CM3 procedure coding standard (default using first four digits)
         List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
         List<Operation> operationList = new ArrayList<>();
-        for(int i=1; i< item.length(); i++){
+        for(int i=2; i< item.length(); i++){
             String code = item.getString(i);
             operationList.addAll(operationRepository.findByOperationCodeLike("%"+code+"%"));
         }
@@ -533,12 +564,12 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByDiagnosis(JSONArray item, String type) throws Exception {
-        // item = [type, diagnosisCode1, diagnosisCode2, ...]
+        // item = [isInherit, type, diagnosisCode1, diagnosisCode2, ...]
         // type = {"mainDiagnosis", "diagnosis"}
         // code follows ICD-10 diagnosis coding standard (default using first three digits)
         List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
         List<Diagnosis> diagnosisList = new ArrayList<>();
-        for(int i=1; i< item.length(); i++){
+        for(int i=2; i< item.length(); i++){
             String code = item.getString(i);
             if(type.equals("mainDiagnosis")){
                 diagnosisList.addAll(diagnosisRepository.findByMainDiagnosis("%"+code+"%", "3"));
@@ -566,11 +597,11 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByLOS(JSONArray item){
-        // item = ["los", int low_threshold, int high_threshold]
+        // item = [isInherit, "los", int low_threshold, int high_threshold]
         // low_threshold and high_threshold, -1 if not set.
 
-        int lowThreshold = item.getInt(1);
-        int highThreshold = item.getInt(2);
+        int lowThreshold = item.getInt(2);
+        int highThreshold = item.getInt(3);
 
         List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
         List<PatientVisit> patientVisitList = patientVisitRepository.findAll();
@@ -614,11 +645,11 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByVisitType(JSONArray item){
-        // item = ["visitType", type]
+        // item = [isInherit, "visitType", type]
         // "住院" or "门诊"
 
         List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
-        List<PatientVisit> patientVisitList = patientVisitRepository.findByKeyVisitType(item.getString(1));
+        List<PatientVisit> patientVisitList = patientVisitRepository.findByKeyVisitType(item.getString(2));
 
         for(PatientVisit patientVisit: patientVisitList){
             String unifiedPatientID = patientVisit.getKey().getUnifiedPatientID();
@@ -631,23 +662,22 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByHospital(JSONArray item){
-        // item = ["hospital", String hospitalCode, ...]
+        // item = [isInherit, "hospital", String hospitalCode, ...]
         // 如果同时选择了多家医院，则以"或"逻辑返回数据
         List<VisitIdentifier> list = new ArrayList<>();
-        for(int i=1; i<item.length();i++){
-            JSONArray jsonArray = (JSONArray)item.get(i);
-            List<VisitIdentifier> list1 = visitIdentifierRepository.findVisitByHospitalCode(jsonArray.getString(0));
+        for(int i=2; i<item.length();i++){
+            List<VisitIdentifier> list1 = visitIdentifierRepository.findVisitByHospitalCode(item.getString(i));
             list.addAll(list1);
         }
         return list;
     }
 
     private List<VisitIdentifier> selectVisitByBirthDay(JSONArray item){
-        // item = ["birthday", String low_threshold, String high_threshold]
+        // item = [isInherit, "birthday", String low_threshold, String high_threshold]
         // low_threshold and high_threshold format: "yyyy-MM-dd", "-1" if not set.
 
-        Date lowThreshold = convertThresholdFromStringToDate(item.getString(1));
-        Date highThreshold = convertThresholdFromStringToDate(item.getString(2));
+        Date lowThreshold = convertThresholdFromStringToDate(item.getString(2));
+        Date highThreshold = convertThresholdFromStringToDate(item.getString(3));
 
         List<Patient> list;
         if(lowThreshold!=null&&highThreshold!=null){
@@ -685,11 +715,11 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByAdmissionTime (JSONArray item){
-        // item = ["admissionTime", String low_threshold, String high_threshold]
+        // item = [isInherit, "admissionTime", String low_threshold, String high_threshold]
         // low_threshold and high_threshold format: "yyyy-MM-dd", "-1" if not set.
 
-        Date lowThreshold = convertThresholdFromStringToDate(item.getString(1));
-        Date highThreshold = convertThresholdFromStringToDate(item.getString(2));
+        Date lowThreshold = convertThresholdFromStringToDate(item.getString(2));
+        Date highThreshold = convertThresholdFromStringToDate(item.getString(3));
 
         List<PatientVisit> list;
         if(lowThreshold!=null&&highThreshold!=null){
@@ -730,16 +760,16 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitBySex(JSONArray item){
-        String sex = (item.get(1).equals("male"))?"男":"女";
+        String sex = (item.get(2).equals("male"))?"男":"女";
         return visitIdentifierRepository.findVisitBySex(sex);
     }
 
     private List<VisitIdentifier> selectVisitByAge(JSONArray item){
-        // item = ["age", int low_threshold, int high_threshold]
+        // item = [isInherit, "age", int low_threshold, int high_threshold]
 
         // 此处由于一些技术原因，需要用365往上乘
-        int maxAge = 365*(int)item.get(2);
-        int minAge = 365*(int)item.get(1);
+        int maxAge = 365*item.getInt(3);
+        int minAge = 365*item.getInt(2);
         List<VisitIdentifier> list;
         if(maxAge!=-365&&minAge!=-365){
             list = visitIdentifierRepository.findVisitIdentifierByAgeBetween(minAge, maxAge);
@@ -759,11 +789,11 @@ public class GroupAnalysisService {
 
     private List<VisitIdentifier> selectVisitByVitalSignAndUsingFirstRecordOfVisit(JSONArray item) throws Exception {
         // 这个函数由于要遍历vitalSign表，可能存在内存溢出风险，注意
-        // item = ["vitalSign", vitalSignType, low_threshold, high_threshold]
+        // item = [isInherit, "vitalSign", vitalSignType, low_threshold, high_threshold]
         // 如果上限或下限未被设定，则取-1，代表全要，但是最好在前端禁止这种操作
-        String vitalSignType = (String)item.get(1);
-        int highThreshold = Integer.parseInt((String)item.get(3));
-        int lowThreshold = Integer.parseInt((String)item.get(2));
+        String vitalSignType = (String)item.get(2);
+        int highThreshold = Integer.parseInt((String)item.get(4));
+        int lowThreshold = Integer.parseInt((String)item.get(3));
 
         switch (vitalSignType) {
             case ParameterName.SYSTOLIC_BLOOD_PRESSURE: {
