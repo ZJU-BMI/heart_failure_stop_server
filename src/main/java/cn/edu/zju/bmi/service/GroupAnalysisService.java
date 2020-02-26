@@ -1,8 +1,6 @@
 package cn.edu.zju.bmi.service;
 import cn.edu.zju.bmi.entity.DAO.*;
-import cn.edu.zju.bmi.entity.POJO.SexInfo;
-import cn.edu.zju.bmi.entity.POJO.VisitIdentifier;
-import cn.edu.zju.bmi.entity.POJO.VisitInfoForGroupAnalysis;
+import cn.edu.zju.bmi.entity.POJO.*;
 import cn.edu.zju.bmi.repository.*;
 import cn.edu.zju.bmi.support.ParameterName;
 import cn.edu.zju.bmi.support.StringResponse;
@@ -31,6 +29,7 @@ public class GroupAnalysisService {
     private OperationRepository operationRepository;
     private LabTestRepository labTestRepository;
     private OrdersRepository ordersRepository;
+    private CodingServices codingServices;
     private MachineLearningDataPrepareService machineLearningDataPrepareService;
     private ExamRepository examRepository;
     private RestTemplate restTemplate;
@@ -64,7 +63,8 @@ public class GroupAnalysisService {
                                 OrdersRepository ordersRepository,
                                 RestTemplate restTemplate,
                                 MachineLearningDataPrepareService machineLearningDataPrepareService,
-                                ExamRepository examRepository)
+                                ExamRepository examRepository,
+                                CodingServices codingServices)
     {
         this.machineLearningDataPrepareService = machineLearningDataPrepareService;
         this.visitIdentifierRepository = visitIdentifierRepository;
@@ -76,6 +76,7 @@ public class GroupAnalysisService {
         this.patientRepository = patientRepository;
         this.ordersRepository = ordersRepository;
         this.examRepository = examRepository;
+        this.codingServices = codingServices;
         this.restTemplate = restTemplate;
         this.cachePool = new CacheQueue(30);
 
@@ -145,6 +146,227 @@ public class GroupAnalysisService {
             if(sex.equals("女")){female+=1;}
         }
         return new SexInfo(male, female);
+    }
+
+    public AgeInfo getAgeInfo(String filter, String userName, String queryID) throws Exception {
+        String id = userName+"_"+queryID;
+        if(!cachePool.contains(id)){
+            List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
+            List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
+            cachePool.add(id, visitInfoForGroupAnalysisList);
+        }
+        int[] ageDistribution = new int[11];
+        for(VisitInfoForGroupAnalysis visitInfoForGroupAnalysis: cachePool.getContent(id)){
+            int age = Integer.parseInt(visitInfoForGroupAnalysis.getAge());
+            if(age>=100){
+                ageDistribution[10] += 1;
+            }
+            else if(age>=0){
+                ageDistribution[age/10] += 1;
+            }
+
+        }
+        return new AgeInfo(ageDistribution[0], ageDistribution[1], ageDistribution[2], ageDistribution[3],
+                ageDistribution[4], ageDistribution[5], ageDistribution[6], ageDistribution[7], ageDistribution[8],
+                ageDistribution[9], ageDistribution[10]);
+    }
+
+    public List<MedicineStatisticItem> getMedicine(String filter, String userName, String queryID) throws Exception {
+        // 返回项中不包括药品名称，留待前端解析
+        String id = userName+"_"+queryID;
+        Map<String, Integer> medicineMap = new HashMap<>();
+        if(!cachePool.contains(id)){
+            List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
+            List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
+            cachePool.add(id, visitInfoForGroupAnalysisList);
+        }
+        for(VisitInfoForGroupAnalysis visitInfoForGroupAnalysis: cachePool.getContent(id)){
+            String unifiedPatientID = visitInfoForGroupAnalysis.getUnifiedPatientID();
+            String hospitalCode = visitInfoForGroupAnalysis.getHospitalCode();
+            String visitType = visitInfoForGroupAnalysis.getVisitType();
+            String visitID = visitInfoForGroupAnalysis.getVisitID();
+            List<Orders> ordersList = ordersRepository.
+                    findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(unifiedPatientID,
+                    visitID, visitType, hospitalCode);
+            for(Orders orders: ordersList){
+                String orderClass = orders.getOrderClass();
+                String orderCode = orders.getOrderCode();
+                if(codingServices.getMedicineCodeName(orderCode).equals("")){continue;}
+
+                if(orderClass.equals("A")){
+                    if(!medicineMap.containsKey(orderCode)){medicineMap.put(orderCode, 0);}
+                    medicineMap.put(orderCode, medicineMap.get(orderCode)+1);
+                }
+            }
+        }
+        List<MedicineStatisticItem> list = new ArrayList<>();
+        int size = cachePool.getContent(id).size();
+        for(String medicineCode: medicineMap.keySet()){
+            list.add(new MedicineStatisticItem(medicineCode, medicineMap.get(medicineCode),
+                    ((double)medicineMap.get(medicineCode))/size));
+        }
+        // 注意逆序还是顺序
+        list.sort((o1, o2) -> Long.compare(o2.getMedicineCount(), o1.getMedicineCount()));
+        return list;
+    }
+
+    public List<LabTestStatisticItem> getLabTest(String filter, String userName, String queryID) throws Exception {
+        // 返回项中不包括，留待前端解析，此处只处理数值型检查检验结果
+        String id = userName+"_"+queryID;
+        Map<String, Map<String, TwoElementTuple<Date, Double>>> labTestMap = new HashMap<>();
+        if(!cachePool.contains(id)){
+            List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
+            List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
+            cachePool.add(id, visitInfoForGroupAnalysisList);
+        }
+        // 用第一次检查结果，构建相关结果集合，只处理数值化结果
+        for(VisitInfoForGroupAnalysis visitInfoForGroupAnalysis: cachePool.getContent(id)) {
+            String unifiedPatientID = visitInfoForGroupAnalysis.getUnifiedPatientID();
+            String hospitalCode = visitInfoForGroupAnalysis.getHospitalCode();
+            String visitType = visitInfoForGroupAnalysis.getVisitType();
+            String visitID = visitInfoForGroupAnalysis.getVisitID();
+            String unifiedVisitID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            if(!labTestMap.containsKey(unifiedVisitID)){
+                labTestMap.put(unifiedVisitID, new HashMap<>());
+            }
+
+            List<LabTest> labTestList = labTestRepository.
+                    findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(unifiedPatientID,
+                            visitID, visitType, hospitalCode);
+            for (LabTest labTest : labTestList) {
+                String labTestCode = labTest.getLabTestItemCode();
+                Date labTestTime = labTest.getExecuteDate();
+                String result = labTest.getResult();
+                if(codingServices.getLabTestCodeInfo(labTestCode).size()==0){continue;}
+
+                // 必须存在可用结果才可入选
+                double resultDouble;
+                try{ resultDouble = Double.parseDouble(result); } catch (Exception e){continue;}
+                if(labTestMap.get(unifiedVisitID).containsKey(labTestCode)){
+                    if(labTestMap.get(unifiedVisitID).get(labTestCode).getA().after(labTestTime)){
+                        labTestMap.get(unifiedVisitID).put(labTestCode, new TwoElementTuple<>(labTestTime, resultDouble));
+                    }
+                }
+                else{
+                    labTestMap.get(unifiedVisitID).put(labTestCode, new TwoElementTuple<>(labTestTime, resultDouble));
+                }
+            }
+        }
+
+        // 整理得到最终结果
+        // Element Tuple中，前半部分为平均值，后半部分为有效数据数量
+        // 如果是数值型，就记录平均值，标准差和缺失率
+        Map<String, ArrayList<Double>> labTestResultMap = new HashMap<>();
+        for(String unifiedVisitID: labTestMap.keySet()){
+            Map<String, TwoElementTuple<Date, Double>> map = labTestMap.get(unifiedVisitID);
+            for(String code: map.keySet()){
+                if(!labTestResultMap.containsKey(code)){labTestResultMap.put(code, new ArrayList<>());}
+                labTestResultMap.get(code).add(map.get(code).getB());
+            }
+        }
+        List<LabTestStatisticItem> list = new ArrayList<>();
+        for(String code: labTestResultMap.keySet()){
+            List<Double> codeResultList = labTestResultMap.get(code);
+            double sum=0;
+            for(Double num: codeResultList){sum+=num;}
+            double avg = sum/codeResultList.size();
+            double std = 0;
+            for(Double num:codeResultList){std = std+(avg-num)*(avg-num);}
+            std = Math.sqrt(std/codeResultList.size());
+            double missingRate = ((double)codeResultList.size())/cachePool.getContent(id).size();
+            list.add(new LabTestStatisticItem(code, avg, std, missingRate));
+        }
+        list.sort(Comparator.comparingDouble(LabTestStatisticItem::getMissingRate));
+        return list;
+    }
+
+    public List<DiagnosisStatisticItem> getDiagnosis(String filter, String userName, String queryID, String type
+        ) throws Exception{
+        // 返回项中不包括药品名称，留待前端解析
+        String id = userName+"_"+queryID;
+        Map<String, Integer> diagnosisMap = new HashMap<>();
+        if(!cachePool.contains(id)){
+            List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
+            List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
+            cachePool.add(id, visitInfoForGroupAnalysisList);
+        }
+        for(VisitInfoForGroupAnalysis visitInfoForGroupAnalysis: cachePool.getContent(id)){
+            String unifiedPatientID = visitInfoForGroupAnalysis.getUnifiedPatientID();
+            String hospitalCode = visitInfoForGroupAnalysis.getHospitalCode();
+            String visitType = visitInfoForGroupAnalysis.getVisitType();
+            String visitID = visitInfoForGroupAnalysis.getVisitID();
+            List<Diagnosis> diagnosisList = diagnosisRepository.
+                    findAllByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(unifiedPatientID,
+                            visitID, visitType, hospitalCode);
+            for(Diagnosis diagnosis: diagnosisList){
+                String diagnosisType = diagnosis.getKey().getDiagnosisType();
+                // 只用code的前3位，且必须是ICD-10编码
+                String diagnosisCode = diagnosis.getDiagnosisCode();
+                if(diagnosisCode.length()>=3&&(!codingServices.getDiagnosisCodeName(diagnosisCode.substring(0, 3)).equals(""))){
+                    String diagnosisCodeFirstThree = diagnosisCode.substring(0, 3);
+                    if(type.equals(ParameterName.MAIN_DIAGNOSIS)&&diagnosisType.equals("3")){
+                        if(!diagnosisMap.containsKey(diagnosisCodeFirstThree)){
+                            diagnosisMap.put(diagnosisCodeFirstThree, 0);
+                        }
+                        diagnosisMap.put(diagnosisCodeFirstThree, 1+diagnosisMap.get(diagnosisCodeFirstThree));
+                    }
+                    if(type.equals(ParameterName.DIAGNOSIS)&&(diagnosisType.equals("3")||diagnosisType.equals("A"))){
+                        if(!diagnosisMap.containsKey(diagnosisCodeFirstThree)){
+                            diagnosisMap.put(diagnosisCodeFirstThree, 0);
+                        }
+                        diagnosisMap.put(diagnosisCodeFirstThree, 1+diagnosisMap.get(diagnosisCodeFirstThree));
+                    }
+                }
+            }
+        }
+        List<DiagnosisStatisticItem> list = new ArrayList<>();
+        int size = cachePool.getContent(id).size();
+        for(String diagnosisCode: diagnosisMap.keySet()){
+            list.add(new DiagnosisStatisticItem(diagnosisCode, diagnosisMap.get(diagnosisCode),
+                    ((double)diagnosisMap.get(diagnosisCode))/size));
+        }
+        // 注意逆序还是顺序
+        list.sort((o1, o2) -> Long.compare(o2.getDiagnosisCount(), o1.getDiagnosisCount()));
+        return list;
+    }
+
+    public List<OperationStatisticItem> getOperation(String filter, String userName, String queryID) throws Exception{
+        // 返回项中不包括药品名称，留待前端解析
+        String id = userName+"_"+queryID;
+        Map<String, Integer> operationMap = new HashMap<>();
+        if(!cachePool.contains(id)){
+            List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
+            List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
+            cachePool.add(id, visitInfoForGroupAnalysisList);
+        }
+        for(VisitInfoForGroupAnalysis visitInfoForGroupAnalysis: cachePool.getContent(id)){
+            String unifiedPatientID = visitInfoForGroupAnalysis.getUnifiedPatientID();
+            String hospitalCode = visitInfoForGroupAnalysis.getHospitalCode();
+            String visitType = visitInfoForGroupAnalysis.getVisitType();
+            String visitID = visitInfoForGroupAnalysis.getVisitID();
+            List<Operation> operationList = operationRepository.findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(
+                    unifiedPatientID, visitID, visitType, hospitalCode);
+            for(Operation operation: operationList){
+                // 只用code的前5位，加小数点6位
+                String operationCode = operation.getOperationCode();
+                if(operationCode.length()>=6&&(!codingServices.getOperationCodeName(operationCode.substring(0, 6)).equals(""))){
+                    String operationCodeFirstFour = operationCode.substring(0, 6);
+                    if(!operationMap.containsKey(operationCodeFirstFour)){
+                        operationMap.put(operationCodeFirstFour, 0);
+                    }
+                    operationMap.put(operationCodeFirstFour, 1+operationMap.get(operationCodeFirstFour));
+                }
+            }
+        }
+        List<OperationStatisticItem> list = new ArrayList<>();
+        int size = cachePool.getContent(id).size();
+        for(String operationCode: operationMap.keySet()){
+            list.add(new OperationStatisticItem(operationCode, operationMap.get(operationCode),
+                    ((double)operationMap.get(operationCode))/size));
+        }
+        // 注意逆序还是顺序
+        list.sort((o1, o2) -> Long.compare(o2.getOperationCount(), o1.getOperationCount()));
+        return list;
     }
 
     public StringResponse queryDataAccordingToFilter(String filter, String userName, String queryID)
@@ -408,14 +630,14 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByModel(JSONArray item, List<VisitIdentifier> originList) throws Exception {
-        // item = ["machineLearning", unifiedModelName, platform, lowThreshold, highThreshold]
-        String[] modelNameArray = item.getString(1).split("_");
+        // item = [isInherit, "machineLearning", unifiedModelName, platform, lowThreshold, highThreshold]
+        String[] modelNameArray = item.getString(2).split("_");
         String modelCategory = modelNameArray[0];
         String modelName = modelNameArray[1];
         String modelFunction = modelNameArray[2];
 
-        double lowThreshold = item.getDouble(3)/100;
-        double highThreshold = item.getDouble(4)/100;
+        double lowThreshold = item.getDouble(4)/100;
+        double highThreshold = item.getDouble(5)/100;
         List<VisitIdentifier> newList = new ArrayList<>();
 
         for (VisitIdentifier visitIdentifier : originList) {
@@ -423,7 +645,7 @@ public class GroupAnalysisService {
             String hospitalCode = visitIdentifier.getHospitalCode();
             String visitType = visitIdentifier.getVisitType();
             String visitID = visitIdentifier.getVisitID();
-            double value = 0;
+            double value ;
 
             // 此处会成为效率瓶颈。主要的瓶颈是没有实现批量化的数据获取和批量化的数据处理
             // 目前先这么实现，以后想办法优化
@@ -454,9 +676,7 @@ public class GroupAnalysisService {
                     }
                 }
 
-            } catch (Exception e) {
-                value = -1;
-            }
+            } catch (Exception ignored) {}
         }
         return newList;
     }
@@ -914,6 +1134,8 @@ class CacheQueue{
     }
 
     void add(String newId, List<VisitInfoForGroupAnalysis> content){
+        // 按照这一设计，一个患者的某个queryID重复调用时，缺失会出现某个queryID存在多个缓存的情况
+        // 但是遍历时都是从头开始遍历，找到就返回，不会出现错误
         list.add(0, new TwoElementTuple<>(newId, content));
         if(list.size()>maxSize){
             list = list.subList(0, maxSize);

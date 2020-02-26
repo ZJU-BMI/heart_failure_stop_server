@@ -54,28 +54,28 @@ public class MachineLearningDataPrepareService {
         String unPreprocessedData = getFullDataFromDatabase(unifiedPatientID, validList);
 
         // 由于数据数量较大，不能直接作为参数传入，因此先暂存一下
-        String fileName = String.valueOf(new Date().getTime());
-        BufferedWriter writer = new BufferedWriter(new FileWriter(folder+"preprocess/"+fileName));
-        writer.write(unPreprocessedData);
-        writer.close();
+        String fileName = new Date().getTime() +unifiedPatientID+hospitalCode+visitType+visitID;
+        FileOutputStream output = new FileOutputStream(folder+"preprocess/"+fileName);
+        output.write(unPreprocessedData.getBytes());
+        output.close();
 
         // 利用外源性py脚本做数据预处理
+        // 执行外部Python脚本可能带来效率问题，以后构建微服务解决
         String command = "python " + folder+"preprocess/data_convert.py " + fileName;
         Process proc = Runtime.getRuntime().exec(command);
         proc.waitFor();
 
-        //用完删除数据文件
-        Files.delete(Paths.get(folder+"preprocess/"+fileName));
-
         BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-        String line = null;
+        String line;
         String returnStr = null;
         while ((line = in.readLine()) != null) {
             returnStr = line;
             break;
         }
         in.close();
-        proc.waitFor();
+
+        //用完删除数据文件
+        Files.delete(Paths.get(folder+"preprocess/"+fileName));
         return returnStr;
     }
 

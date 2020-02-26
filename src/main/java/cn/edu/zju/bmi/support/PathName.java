@@ -1,11 +1,23 @@
 package cn.edu.zju.bmi.support;
 
 public class PathName {
+    public static final String CODING_SERVICE = "/backend/data/codingService";
+    public static final String DIAGNOSIS_CODE = "/diagnosisCode";
+    public static final String OPERATION_CODE = "/operationCode";
+    public static final String MEDICINE_CODE = "/medicineCode";
+    public static final String LAB_TEST_CODE = "/labTestCode";
+
     //group Analysis
     public static final String GROUP_ANALYSIS_DATA = "/backend/data/groupAnalysis";
     public static final String QUERY_WITH_FILTER = "/queryWithFilter";
     public static final String GET_VISIT_INFO = "/getVisitInfo";
     public static final String GET_SEX_INFO = "/getSexInfo";
+    public static final String GET_AGE_INFO = "/getAgeInfo";
+    public static final String GET_OPERATION_INFO = "/getOperationInfo";
+    public static final String GET_DIAGNOSIS_INFO = "/getDiagnosisInfo";
+    public static final String GET_MAIN_DIAGNOSIS_INFO = "/getMainDiagnosisInfo";
+    public static final String GET_LAB_TEST_INFO = "/getLabTestInfo";
+    public static final String GET_MEDICINE_INFO = "/getMedicineInfo";
     public static final String QUERY_WITH_FATHER_QUERY_AND_NEW_CONDITION = "/queryWithFatherQueryAndNewCondition";
 
 

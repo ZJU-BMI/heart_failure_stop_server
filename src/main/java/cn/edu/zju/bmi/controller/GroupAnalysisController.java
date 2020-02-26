@@ -1,6 +1,5 @@
 package cn.edu.zju.bmi.controller;
-import cn.edu.zju.bmi.entity.POJO.SexInfo;
-import cn.edu.zju.bmi.entity.POJO.VisitInfoForGroupAnalysis;
+import cn.edu.zju.bmi.entity.POJO.*;
 import cn.edu.zju.bmi.service.GroupAnalysisService;
 import cn.edu.zju.bmi.support.ParameterName;
 import cn.edu.zju.bmi.support.PathName;
@@ -68,5 +67,59 @@ public class GroupAnalysisController {
             @RequestParam(ParameterName.USER_NAME) String userName
     ) throws Exception {
         return groupAnalysisService.getSexInfo(filter, userName, queryID);
+    }
+
+    @PostMapping(value = PathName.GET_AGE_INFO)
+    public AgeInfo getAgeInfo(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        return groupAnalysisService.getAgeInfo(filter, userName, queryID);
+    }
+
+    @PostMapping(value = PathName.GET_DIAGNOSIS_INFO)
+    public List<DiagnosisStatisticItem> getDiagnosisInfo(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        return groupAnalysisService.getDiagnosis(filter, userName, queryID, ParameterName.DIAGNOSIS);
+    }
+
+    @PostMapping(value = PathName.GET_MAIN_DIAGNOSIS_INFO)
+    public List<DiagnosisStatisticItem> getMainDiagnosisInfo(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        return groupAnalysisService.getDiagnosis(filter, userName, queryID, ParameterName.MAIN_DIAGNOSIS);
+    }
+
+    @PostMapping(value = PathName.GET_OPERATION_INFO)
+    public List<OperationStatisticItem> getOperationInfo(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        return groupAnalysisService.getOperation(filter, userName, queryID);
+    }
+
+    @PostMapping(value = PathName.GET_LAB_TEST_INFO)
+    public List<LabTestStatisticItem> getLabTestInfo(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        return groupAnalysisService.getLabTest(filter, userName, queryID);
+    }
+
+    @PostMapping(value = PathName.GET_MEDICINE_INFO)
+    public List<MedicineStatisticItem> getMedicine(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        return groupAnalysisService.getMedicine(filter, userName, queryID);
     }
 }
