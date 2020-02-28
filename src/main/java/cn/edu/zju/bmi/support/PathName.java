@@ -1,7 +1,7 @@
 package cn.edu.zju.bmi.support;
 
 public class PathName {
-    public static final String CODING_SERVICE = "/backend/data/codingService";
+    public static final String CONTEXT_INFO = "/backend/data/contextInfo";
     public static final String DIAGNOSIS_CODE = "/diagnosisCode";
     public static final String OPERATION_CODE = "/operationCode";
     public static final String MEDICINE_CODE = "/medicineCode";

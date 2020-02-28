@@ -175,6 +175,10 @@ public class GroupAnalysisService {
         // 返回项中不包括药品名称，留待前端解析
         String id = userName+"_"+queryID;
         Map<String, Integer> medicineMap = new HashMap<>();
+
+        // 由于一个病人在一次入院中可能会多次下一个诊断（由于我们只取了前三位ICD编码，因此这种情况很常见），需要就此作出判断
+        Map<String, Set<String>> medicineExistMap = new HashMap<>();
+
         if(!cachePool.contains(id)){
             List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
             List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
@@ -188,12 +192,19 @@ public class GroupAnalysisService {
             List<Orders> ordersList = ordersRepository.
                     findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(unifiedPatientID,
                     visitID, visitType, hospitalCode);
+
+            String unifiedVisitID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            if(!medicineExistMap.containsKey(unifiedVisitID)){medicineExistMap.put(unifiedVisitID, new HashSet<>());}
+
             for(Orders orders: ordersList){
                 String orderClass = orders.getOrderClass();
                 String orderCode = orders.getOrderCode();
                 if(codingServices.getMedicineCodeName(orderCode).equals("")){continue;}
 
                 if(orderClass.equals("A")){
+                    if(medicineExistMap.get(unifiedVisitID).contains(orderCode)){continue;}
+                    else{medicineExistMap.get(unifiedVisitID).add(orderCode);}
+
                     if(!medicineMap.containsKey(orderCode)){medicineMap.put(orderCode, 0);}
                     medicineMap.put(orderCode, medicineMap.get(orderCode)+1);
                 }
@@ -273,7 +284,7 @@ public class GroupAnalysisService {
             double std = 0;
             for(Double num:codeResultList){std = std+(avg-num)*(avg-num);}
             std = Math.sqrt(std/codeResultList.size());
-            double missingRate = ((double)codeResultList.size())/cachePool.getContent(id).size();
+            double missingRate = 1-((double)codeResultList.size())/cachePool.getContent(id).size();
             list.add(new LabTestStatisticItem(code, avg, std, missingRate));
         }
         list.sort(Comparator.comparingDouble(LabTestStatisticItem::getMissingRate));
@@ -282,6 +293,9 @@ public class GroupAnalysisService {
 
     public List<DiagnosisStatisticItem> getDiagnosis(String filter, String userName, String queryID, String type
         ) throws Exception{
+        // 由于一个病人在一次入院中可能会多次用一个药物，需要就此作出判断
+        Map<String, Set<String>> diagnosisExistMap = new HashMap<>();
+
         // 返回项中不包括药品名称，留待前端解析
         String id = userName+"_"+queryID;
         Map<String, Integer> diagnosisMap = new HashMap<>();
@@ -298,19 +312,30 @@ public class GroupAnalysisService {
             List<Diagnosis> diagnosisList = diagnosisRepository.
                     findAllByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(unifiedPatientID,
                             visitID, visitType, hospitalCode);
+
+            String unifiedVisitID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            if(!diagnosisExistMap.containsKey(unifiedVisitID)){diagnosisExistMap.put(unifiedVisitID, new HashSet<>());}
+
             for(Diagnosis diagnosis: diagnosisList){
                 String diagnosisType = diagnosis.getKey().getDiagnosisType();
                 // 只用code的前3位，且必须是ICD-10编码
                 String diagnosisCode = diagnosis.getDiagnosisCode();
                 if(diagnosisCode.length()>=3&&(!codingServices.getDiagnosisCodeName(diagnosisCode.substring(0, 3)).equals(""))){
                     String diagnosisCodeFirstThree = diagnosisCode.substring(0, 3);
+
                     if(type.equals(ParameterName.MAIN_DIAGNOSIS)&&diagnosisType.equals("3")){
+                        if(diagnosisExistMap.get(unifiedVisitID).contains(diagnosisCodeFirstThree)){continue;}
+                        else{diagnosisExistMap.get(unifiedVisitID).add(diagnosisCodeFirstThree);}
+
                         if(!diagnosisMap.containsKey(diagnosisCodeFirstThree)){
                             diagnosisMap.put(diagnosisCodeFirstThree, 0);
                         }
                         diagnosisMap.put(diagnosisCodeFirstThree, 1+diagnosisMap.get(diagnosisCodeFirstThree));
                     }
                     if(type.equals(ParameterName.DIAGNOSIS)&&(diagnosisType.equals("3")||diagnosisType.equals("A"))){
+                        if(diagnosisExistMap.get(unifiedVisitID).contains(diagnosisCodeFirstThree)){continue;}
+                        else{diagnosisExistMap.get(unifiedVisitID).add(diagnosisCodeFirstThree);}
+
                         if(!diagnosisMap.containsKey(diagnosisCodeFirstThree)){
                             diagnosisMap.put(diagnosisCodeFirstThree, 0);
                         }
@@ -331,6 +356,9 @@ public class GroupAnalysisService {
     }
 
     public List<OperationStatisticItem> getOperation(String filter, String userName, String queryID) throws Exception{
+        // 由于一个病人在一次入院中可能会多次做一个手术，需要就此作出判断
+        Map<String, Set<String>> operationExistMap = new HashMap<>();
+
         // 返回项中不包括药品名称，留待前端解析
         String id = userName+"_"+queryID;
         Map<String, Integer> operationMap = new HashMap<>();
@@ -346,15 +374,21 @@ public class GroupAnalysisService {
             String visitID = visitInfoForGroupAnalysis.getVisitID();
             List<Operation> operationList = operationRepository.findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(
                     unifiedPatientID, visitID, visitType, hospitalCode);
+            String unifiedVisitID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            if(!operationExistMap.containsKey(unifiedVisitID)){operationExistMap.put(unifiedVisitID, new HashSet<>());}
+
             for(Operation operation: operationList){
                 // 只用code的前5位，加小数点6位
                 String operationCode = operation.getOperationCode();
                 if(operationCode.length()>=6&&(!codingServices.getOperationCodeName(operationCode.substring(0, 6)).equals(""))){
-                    String operationCodeFirstFour = operationCode.substring(0, 6);
-                    if(!operationMap.containsKey(operationCodeFirstFour)){
-                        operationMap.put(operationCodeFirstFour, 0);
+                    String operationCodeFirstSix = operationCode.substring(0, 6);
+                    if(operationExistMap.get(unifiedVisitID).contains(operationCodeFirstSix)){continue;}
+                    else{operationExistMap.get(unifiedVisitID).add(operationCodeFirstSix);}
+
+                    if(!operationMap.containsKey(operationCodeFirstSix)){
+                        operationMap.put(operationCodeFirstSix, 0);
                     }
-                    operationMap.put(operationCodeFirstFour, 1+operationMap.get(operationCodeFirstFour));
+                    operationMap.put(operationCodeFirstSix, 1+operationMap.get(operationCodeFirstSix));
                 }
             }
         }
@@ -631,6 +665,7 @@ public class GroupAnalysisService {
 
     private List<VisitIdentifier> selectVisitByModel(JSONArray item, List<VisitIdentifier> originList) throws Exception {
         // item = [isInherit, "machineLearning", unifiedModelName, platform, lowThreshold, highThreshold]
+        // 这部分代码具备极为严重的性能问题，平均一个visit的模型执行时间在0.6秒左右，当需要执行数万个visit的
         String[] modelNameArray = item.getString(2).split("_");
         String modelCategory = modelNameArray[0];
         String modelName = modelNameArray[1];
@@ -707,53 +742,87 @@ public class GroupAnalysisService {
     }
 
     private List<VisitIdentifier> selectVisitByLabTest(JSONArray item) throws Exception {
+        // 一名患者可能一次入院会做多次同一检查，针对这一问题，我们只看第一次
         // item = [isInherit, "labTest", code, numerical, value1, value2, name, unit] or
         // item = [isInherit, "labTest", code, categorical, value, name, unit]
         List<LabTest> labTestList = new ArrayList<>();
         String featureCode = item.getString(2);
         String featureType = item.getString(3);
         if(featureType.equals("numerical")){
-            double lowThreshold = item.getDouble(4);
-            double highThreshold = item.getDouble(5);
-            if(lowThreshold!=-1&&highThreshold!=-1){
-                labTestList.addAll(labTestRepository.findByItemAndValueBetween(featureCode, lowThreshold,
-                        highThreshold, ""));
-            }
-            else if(lowThreshold==-1&&highThreshold==-1){
-                labTestList.addAll(labTestRepository.findByLabTestItemCode(featureCode));
-                System.out.println("min value and max value are not set");
-            }
-            else if(highThreshold!=-1){
-                labTestList.addAll(labTestRepository.findByItemAndValueGreaterThan(featureCode, lowThreshold,
-                        ""));
-            }
-            else {
-                labTestList.addAll(labTestRepository.findByItemAndValueLessThan(featureCode,
-                        highThreshold, ""));
-            }
+            labTestList.addAll(labTestRepository.findByLabTestItemCode(featureCode));
         }
         else if(featureType.equals("category")){
-            String value = item.getString(4);
-            labTestList.addAll(labTestRepository.findByItemAndValueIs(featureCode,
-                    value, ""));
+            labTestList.addAll(labTestRepository.findByItem(featureCode, ""));
         }
         else{
             throw new Exception("lab test data type error");
         }
 
-        // 消除重复值
-        Map<String, VisitIdentifier> map = new HashMap<>();
+        // 上述仅做到"该名患者至少有一次检查结果在目标区间中"，但是并不保证这次是第一次，因此我们需要先找出最早的一次，然后再判断
+        Map<String, TwoElementTuple<String, Date>> firstTestMap = new HashMap<>();
+        // 找出最早的一次
         for(LabTest labTest : labTestList){
             String unifiedPatientID = labTest.getKey().getUnifiedPatientID();
             String visitType = labTest.getKey().getVisitType();
             String visitID = labTest.getKey().getVisitID();
             String hospitalCode = labTest.getKey().getHospitalCode();
-            String id = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
-            map.put(id, new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+            String labTestNo = labTest.getKey().getLabTestNo();
+            String unifiedTestID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID+"_"+labTestNo;
+            String unifiedVisitID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            Date testTime = labTest.getExecuteDate();
+            if(firstTestMap.containsKey(unifiedVisitID)){
+                if(firstTestMap.get(unifiedVisitID).getB().after(testTime)){
+                    firstTestMap.put(unifiedVisitID, new TwoElementTuple<>(unifiedTestID, testTime));
+                }
+            }
+            else{
+                firstTestMap.put(unifiedVisitID, new TwoElementTuple<>(unifiedTestID, testTime));
+            }
         }
+        // 最早一次的集合
+        Set<String> unifiedTestSet = new HashSet<>();
+        for(String unifiedVisitID: firstTestMap.keySet()){ unifiedTestSet.add(firstTestMap.get(unifiedVisitID).getA());}
+
+        // 最后再做判断
         List<VisitIdentifier> visitIdentifierList = new ArrayList<>();
-        for(String key: map.keySet()){
-            visitIdentifierList.add(map.get(key));
+        for(LabTest labTest : labTestList){
+            String unifiedPatientID = labTest.getKey().getUnifiedPatientID();
+            String visitType = labTest.getKey().getVisitType();
+            String visitID = labTest.getKey().getVisitID();
+            String hospitalCode = labTest.getKey().getHospitalCode();
+            String labTestNo = labTest.getKey().getLabTestNo();
+            String unifiedTestID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID+"_"+labTestNo;
+
+            if(unifiedTestSet.contains(unifiedTestID)){
+                String result = labTest.getResult();
+                try{Double.parseDouble(result);} catch (Exception e){continue;}
+                if(featureType.equals("numerical")){
+                    double lowThreshold = item.getDouble(4);
+                    double highThreshold = item.getDouble(5);
+                    double doubleResult = Double.parseDouble(result);
+                    if(lowThreshold!=-1&&highThreshold!=-1){
+                        if(doubleResult>=lowThreshold&&doubleResult<=highThreshold) {
+                            visitIdentifierList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                        }
+                    }
+                    else if(lowThreshold==-1&&highThreshold==-1){
+                        visitIdentifierList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                    }
+                    else if(highThreshold!=-1){
+                        if(doubleResult>=lowThreshold) {
+                            visitIdentifierList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                        }
+                    }
+                    else {
+                        visitIdentifierList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                    }
+                }
+                else {
+                    if(result.equals(item.getString(4))){
+                        visitIdentifierList.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                    }
+                }
+            }
         }
         return visitIdentifierList;
     }
@@ -1017,16 +1086,68 @@ public class GroupAnalysisService {
 
         switch (vitalSignType) {
             case ParameterName.SYSTOLIC_BLOOD_PRESSURE: {
-                Map<String, VitalSign> map = getVitalSignFirstRecordOfVisit("血压high", lowThreshold, highThreshold);
-                return mapToList(map);
+                Map<String, VitalSign> map = getVitalSignFirstRecordOfVisit("血压high");
+                List<VisitIdentifier> list = new ArrayList<>();
+                for(String id: map.keySet()) {
+                    String unifiedPatientID = map.get(id).getKey().getUnifiedPatientID();
+                    String visitType = map.get(id).getKey().getVisitType();
+                    String visitID = map.get(id).getKey().getVisitID();
+                    String hospitalCode = map.get(id).getKey().getHospitalCode();
+                    double result = map.get(id).getResult();
+                    if(highThreshold!=-1&&lowThreshold!=-1){
+                        if(result<highThreshold&&result>lowThreshold){
+                            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                        }
+                    }
+                    else if(highThreshold==-1&&lowThreshold==-1){
+                        list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                    }
+                    else if(highThreshold!=-1){
+                        if(result<highThreshold){
+                            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                        }
+                    }
+                    else {
+                        if(result>lowThreshold){
+                            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                        }
+                    }
+                }
+                return list;
             }
             case ParameterName.DIASTOLIC_BLOOD_PRESSURE: {
-                Map<String, VitalSign> map = getVitalSignFirstRecordOfVisit("血压Low", lowThreshold, highThreshold);
-                return mapToList(map);
+                Map<String, VitalSign> map = getVitalSignFirstRecordOfVisit("血压Low");
+                List<VisitIdentifier> list = new ArrayList<>();
+                for(String id: map.keySet()) {
+                    String unifiedPatientID = map.get(id).getKey().getUnifiedPatientID();
+                    String visitType = map.get(id).getKey().getVisitType();
+                    String visitID = map.get(id).getKey().getVisitID();
+                    String hospitalCode = map.get(id).getKey().getHospitalCode();
+                    double result = map.get(id).getResult();
+                    if(highThreshold!=-1&&lowThreshold!=-1){
+                        if(result<highThreshold&&result>lowThreshold){
+                            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                        }
+                    }
+                    else if(highThreshold==-1&&lowThreshold==-1){
+                        list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                    }
+                    else if(highThreshold!=-1){
+                        if(result<highThreshold){
+                            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                        }
+                    }
+                    else {
+                        if(result>lowThreshold){
+                            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
+                        }
+                    }
+                }
+                return list;
             }
             case ParameterName.BMI: {
-                Map<String, VitalSign> heightMap = getVitalSignFirstRecordOfVisit("身高", -1, -1);
-                Map<String, VitalSign> weightMap = getVitalSignFirstRecordOfVisit("体重", -1, -1);
+                Map<String, VitalSign> heightMap = getVitalSignFirstRecordOfVisit("身高");
+                Map<String, VitalSign> weightMap = getVitalSignFirstRecordOfVisit("体重");
                 List<VisitIdentifier> list = new ArrayList<>();
                 for(String id: heightMap.keySet()){
                     if(!weightMap.containsKey(id)){
@@ -1067,34 +1188,8 @@ public class GroupAnalysisService {
         }
     }
 
-    private List<VisitIdentifier> mapToList(Map<String, VitalSign> map){
-        List<VisitIdentifier> list = new ArrayList<>();
-        for(String key: map.keySet()){
-            VitalSign vitalSign = map.get(key);
-            String unifiedPatientID = vitalSign.getKey().getUnifiedPatientID();
-            String visitType = vitalSign.getKey().getVisitType();
-            String visitID = vitalSign.getKey().getVisitID();
-            String hospitalCode = vitalSign.getKey().getHospitalCode();
-            list.add(new VisitIdentifier(unifiedPatientID, hospitalCode, visitType, visitID));
-        }
-        return list;
-    }
-
-    private Map<String, VitalSign> getVitalSignFirstRecordOfVisit(String type, int lowThreshold, int highThreshold){
-        List<VitalSign> list;
-        if(highThreshold!=-1&&lowThreshold!=-1){
-            list = vitalSignRepository.findByKeyVitalSignAndResultLessThanAndResultGreaterThan(
-                    type, highThreshold, lowThreshold);
-        }
-        else if(highThreshold==-1&&lowThreshold==-1){
-            list = vitalSignRepository.findByKeyVitalSign(type);
-        }
-        else if(highThreshold!=-1){
-            list = vitalSignRepository.findByKeyVitalSignAndResultLessThan(type, highThreshold);
-        }
-        else {
-            list = vitalSignRepository.findByKeyVitalSignAndResultGreaterThan(type, lowThreshold);
-        }
+    private Map<String, VitalSign> getVitalSignFirstRecordOfVisit(String type){
+        List<VitalSign> list = vitalSignRepository.findByKeyVitalSign(type);
 
         Map<String, VitalSign> map = new HashMap<>();
         for(VitalSign vitalSign: list){

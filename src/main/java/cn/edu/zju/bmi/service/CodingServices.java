@@ -76,10 +76,18 @@ public class CodingServices {
         }
     }
 
-    public String getDiagnosisCodingListJson(){return diagnosisCodeJson;}
-    public String getLabTestCodingListJson(){return labTestCodeJson;}
-    public String getMedicineCodingListJson(){return medicineCodeJson;}
-    public String getOperationCodingListJson(){return operationCodeJson;}
+    public String getDiagnosisCodingListJson(){
+        return diagnosisCodeJson;
+    }
+    public String getLabTestCodingListJson(){
+        return labTestCodeJson;
+    }
+    public String getMedicineCodingListJson(){
+        return medicineCodeJson;
+    }
+    public String getOperationCodingListJson(){
+        return operationCodeJson;
+    }
     String getDiagnosisCodeName(String code){return diagnosisCodeMap.getOrDefault(code, "");}
     List<String> getLabTestCodeInfo(String code){return labTestCodeMap.getOrDefault(code, new ArrayList<>());}
     String getOperationCodeName(String code){return operationCodeMap.getOrDefault(code, "");}
