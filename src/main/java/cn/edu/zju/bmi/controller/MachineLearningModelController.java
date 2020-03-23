@@ -45,6 +45,16 @@ public class MachineLearningModelController {
                 visitType, visitID, modelCategory, modelName, modelFunction);
     }
 
+    @GetMapping(value = PathName.FETCH_UN_PREPROCESSED__MACHINE_LEARNING_MODEL_DATA)
+    public String getMachineLearningModelData(
+            @RequestParam(ParameterName.UNIFIED_PATIENT_ID) String unifiedPatientID,
+            @RequestParam(ParameterName.HOSPITAL_CODE) String hospitalCode,
+            @RequestParam(ParameterName.VISIT_TYPE) String visitType,
+            @RequestParam(ParameterName.VISIT_ID) String visitID) {
+        return machineLearningDataPrepareService.getUnPreprocessedData(unifiedPatientID, hospitalCode,
+                visitType, visitID);
+    }
+
     @PostMapping(value = PathName.EXECUTE_MACHINE_LEARNING_MODEL)
     public String executeModel(
             @RequestParam(ParameterName.MODEL_NAME) String modelName,
@@ -57,7 +67,7 @@ public class MachineLearningModelController {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> entity = new HttpEntity<>(input, headers);
 
-        if(platform.equals("Tensorflow")) {
+        if(platform.equals("Tensorflow")||platform.equals("tensorflow")) {
             String url = tensorflowAddress + modelCategory + "_" + modelName + "_" + modelFunction + ":predict";
             try{
                 ResponseEntity<String> answer = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);

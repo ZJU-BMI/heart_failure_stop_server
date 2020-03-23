@@ -1,12 +1,6 @@
 package cn.edu.zju.bmi.support;
 
 public class PathName {
-    public static final String CONTEXT_INFO = "/backend/data/contextInfo";
-    public static final String DIAGNOSIS_CODE = "/diagnosisCode";
-    public static final String OPERATION_CODE = "/operationCode";
-    public static final String MEDICINE_CODE = "/medicineCode";
-    public static final String LAB_TEST_CODE = "/labTestCode";
-
     //group Analysis
     public static final String GROUP_ANALYSIS_DATA = "/backend/data/groupAnalysis";
     public static final String QUERY_WITH_FILTER = "/queryWithFilter";
@@ -20,6 +14,42 @@ public class PathName {
     public static final String GET_MEDICINE_INFO = "/getMedicineInfo";
     public static final String QUERY_WITH_FATHER_QUERY_AND_NEW_CONDITION = "/queryWithFatherQueryAndNewCondition";
 
+    // user info
+    public static final String USER_INFO_DATA = "/backend/data/userInfo";
+    public static final String USER_INFO = "/userInfo";
+
+    // state management
+    public static final String STATE_MANAGEMENT="/backend/stateManagement";
+    public static final String UPDATE_STATE = "/uploadState";
+    public static final String DOWNLOAD_STATE = "/downloadState";
+
+    // machine learning path
+    public static final String INVOKE_MACHINE_LEARNING_SERVICE = "/backend/machineLearning";
+    public static final String FETCH_MACHINE_LEARNING_MODEL_DATA = "/getDataForMachineLearningModel";
+    public static final String EXECUTE_MACHINE_LEARNING_MODEL = "/executeModel";
+    // only for test
+    public static final String FETCH_UN_PREPROCESSED__MACHINE_LEARNING_MODEL_DATA = "/getUnPreprocessedDataForMachineLearningModel";
+
+    // Auth
+    public static final String AUTH = "/backend/authentic";
+    public static final String LOGIN = "/login";
+    public static final String SIGNUP = "/signup";
+    public static final String SIGNUP_USER_EXIST_TEST = "/signupUserExistTest";
+
+    // algorithm management
+    public static final String ALGORITHM_MANAGEMENT="/backend/algorithmManagement";
+    public static final String UPLOAD_MODEL_FILE = "/uploadModelFile";
+    public static final String UPLOAD_MODEL_DOCUMENT = "/uploadModelDoc";
+    public static final String UPLOAD_PREPROCESSING_MODULE = "/uploadPreprocessingModule";
+    public static final String DOWNLOAD_MODEL_FILE = "/downloadModelFile";
+    public static final String DOWNLOAD_PREPROCESSING_MODULE = "/downloadPreprocessingModule";
+    public static final String DOWNLOAD_MODEL_DOCUMENT="/downloadModelDoc";
+    public static final String CREATE_NEW_MODEL= "/createNewModel";
+    public static final String DELETE_EXIST_MODEL = "/deleteExistModel";
+    public static final String FETCH_MODEL_LIST = "/fetchModelList";
+    public static final String UPDATE_ACCESS_CONTROL = "/updateAccessControl";
+    public static final String UPDATE_PLATFORM = "/updatePlatform";
+    public static final String MODEL_INFO = "/modelInfo";
 
     //individual Analysis
     public static final String INDIVIDUAL_ANALYSIS_DATA = "/backend/data/individualAnalysis";
@@ -35,38 +65,10 @@ public class PathName {
     public static final String INDIVIDUAL_ANALYSIS_DATA_EXAM ="/exam";
     public static final String LAB_TEST_NAME_DICT = "/labTestNameList";
 
-    // Auth
-    public static final String AUTH = "/backend/authentic";
-    public static final String LOGIN = "/login";
-    public static final String SIGNUP = "/signup";
-    public static final String SIGNUP_USER_EXIST_TEST = "/signupUserExistTest";
-
-    // user info
-    public static final String USER_INFO_DATA = "/backend/data/userInfo";
-    public static final String USER_INFO = "/userInfo";
-
-    // algorithm management
-    public static final String ALGORITHM_MANAGEMENT="/backend/algorithmManagement";
-    public static final String UPLOAD_MODEL_FILE = "/uploadModelFile";
-    public static final String DOWNLOAD_MODEL_FILE = "/downloadModelFile";
-    public static final String UPLOAD_PREPROCESSING_MODULE = "/uploadPreprocessingModule";
-    public static final String DOWNLOAD_PREPROCESSING_MODULE = "/downloadPreprocessingModule";
-    public static final String UPLOAD_MODEL_DOCUMENT = "/uploadModelDoc";
-    public static final String DOWNLOAD_MODEL_DOCUMENT="/downloadModelDoc";
-    public static final String CREATE_NEW_MODEL= "/createNewModel";
-    public static final String DELETE_EXIST_MODEL = "/deleteExistModel";
-    public static final String FETCH_MODEL_LIST = "/fetchModelList";
-    public static final String UPDATE_ACCESS_CONTROL = "/updateAccessControl";
-    public static final String UPDATE_PLATFORM = "/updatePlatform";
-    public static final String MODEL_INFO = "/modelInfo";
-
-    // state management
-    public static final String STATE_MANAGEMENT="/backend/stateManagement";
-    public static final String UPDATE_STATE = "/uploadState";
-    public static final String DOWNLOAD_STATE = "/downloadState";
-
-    // machine learning path
-    public static final String INVOKE_MACHINE_LEARNING_SERVICE = "/backend/machineLearning";
-    public static final String FETCH_MACHINE_LEARNING_MODEL_DATA = "/getDataForMachineLearningModelUpToOneVisit";
-    public static final String EXECUTE_MACHINE_LEARNING_MODEL = "/executeModel";
+    // context info
+    public static final String CONTEXT_INFO = "/backend/data/contextInfo";
+    public static final String DIAGNOSIS_CODE = "/diagnosisCode";
+    public static final String OPERATION_CODE = "/operationCode";
+    public static final String MEDICINE_CODE = "/medicineCode";
+    public static final String LAB_TEST_CODE = "/labTestCode";
 }

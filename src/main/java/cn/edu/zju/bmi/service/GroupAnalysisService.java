@@ -711,7 +711,9 @@ public class GroupAnalysisService {
                     }
                 }
 
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                ignored.printStackTrace();
+            }
         }
         return newList;
     }

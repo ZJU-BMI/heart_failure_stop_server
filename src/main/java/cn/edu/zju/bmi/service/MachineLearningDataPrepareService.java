@@ -43,6 +43,13 @@ public class MachineLearningDataPrepareService {
         this.examRepository = examRepository;
     }
 
+    public String getUnPreprocessedData(String unifiedPatientID, String hospitalCode, String visitType, String visitID){
+        // 当输入相应请求时，返回该病人之前的所有数据（这里可能会多传很多不需要的信息，留待以后优化）
+        List<FourElementTuple<String, String, String, Long>> validList=
+                getVisitListBeforeOrEqualToTargetVisit(unifiedPatientID, hospitalCode, visitType, visitID);
+        return getFullDataFromDatabase(unifiedPatientID, validList);
+    }
+
     public String fetchData(String unifiedPatientID, String hospitalCode, String visitType, String visitID,
                             String modelCategory, String modelName, String modelFunction) throws Exception {
 
