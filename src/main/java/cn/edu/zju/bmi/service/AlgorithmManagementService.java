@@ -31,6 +31,7 @@ public class AlgorithmManagementService {
     @Value(value="${app.tensorflowServerDataRoot}")
     private String TENSORFLOW_SERVER_PATH;
     private MachineLearningModelRepository machineLearningModelRepository;
+    private String resourcePath = System.getProperty("user.dir")+"/src/main/resources";
 
     @Autowired
     public AlgorithmManagementService(MachineLearningModelRepository machineLearningModelRepository){
@@ -136,7 +137,8 @@ public class AlgorithmManagementService {
 
     private void saveModelFile(String mainCategory, String modelName, String modelFunction, MultipartFile modelFile) {
         try {
-            String path = MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction+"/"+modelFile.getOriginalFilename();
+            String path = resourcePath + MODEL_SAVE_PATH + "/"+mainCategory+"/"+modelName+"/"+modelFunction+"/"+
+                    modelFile.getOriginalFilename();
             deleteEntirePathIfExist(Paths.get(path));
             modelFile.transferTo(new File(path));
         }
@@ -163,7 +165,8 @@ public class AlgorithmManagementService {
 
     private void saveModelDoc(String mainCategory, String modelName, String modelFunction, MultipartFile modelDoc){
         try {
-            String path = MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction+"/"+modelDoc.getOriginalFilename();
+            String path = resourcePath+MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction+"/"+
+                    modelDoc.getOriginalFilename();
             deleteEntirePathIfExist(Paths.get(path));
             modelDoc.transferTo(new File(path));
         }
@@ -191,7 +194,7 @@ public class AlgorithmManagementService {
 
     private void saveAndUnZipPreprocess(String mainCategory, String modelName, String modelFunction, MultipartFile preprocess){
         try {
-            String folderPath = MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction+"/";
+            String folderPath = resourcePath+MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction+"/";
             String filePath = folderPath+preprocess.getOriginalFilename();
             deleteEntirePathIfExist(Paths.get(filePath));
             deleteEntirePathIfExist(Paths.get(folderPath+"/preprocess"));
@@ -219,22 +222,22 @@ public class AlgorithmManagementService {
 
 
     private void createNewFolder(String mainCategory, String modelName, String modelFunction){
-        String targetPath = MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction;
+        String targetPath = resourcePath+MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction;
         recreateFolder(targetPath);
     }
 
     public ResponseEntity<Resource> readModelFile(String mainCategory, String modelName, String modelFunction){
-        String pathStr = MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"model.zip";
+        String pathStr = resourcePath+MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"model.zip";
         return getResourceResponseEntity(pathStr, "application/zip");
     }
 
     public ResponseEntity<Resource> readPreprocessModule(String mainCategory, String modelName, String modelFunction){
-        String pathStr = MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"preprocess.zip";
+        String pathStr = resourcePath+MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"preprocess.zip";
         return getResourceResponseEntity(pathStr, "application/zip");
     }
 
     public ResponseEntity<Resource> readModelDoc(String mainCategory, String modelName, String modelFunction){
-        String pathStr = MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"doc.md";
+        String pathStr = resourcePath+MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"doc.md";
         return getResourceResponseEntity(pathStr, "text/plain");
     }
 
@@ -255,7 +258,7 @@ public class AlgorithmManagementService {
     }
 
     public ResponseEntity<String> deleteModel(String mainCategory, String modelName, String modelFunction){
-        String pathStr = MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction;
+        String pathStr = resourcePath+MODEL_SAVE_PATH+"/"+mainCategory+"/"+modelName+"/"+modelFunction;
         Path path = Paths.get(pathStr);
         try {
             Files.walk(path)
@@ -316,7 +319,7 @@ public class AlgorithmManagementService {
     private void deleteModelDeploy(String mainCategory, String modelName, String modelFunction){
         updateTensorflowModelConfigFile();
 
-        String targetPath = TENSORFLOW_SERVER_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/";
+        String targetPath = resourcePath+TENSORFLOW_SERVER_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/";
         try {
             Files.walk(Paths.get(targetPath))
                     .sorted(Comparator.reverseOrder())
@@ -330,11 +333,11 @@ public class AlgorithmManagementService {
         // 包含模型迁移及解压工作
 
         // 创建目标转移路径
-        String targetPath = TENSORFLOW_SERVER_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/";
+        String targetPath = resourcePath+TENSORFLOW_SERVER_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/";
         recreateFolder(targetPath);
 
         // 将Spring Boot下存储好的模型转移到Tensorflow Server下
-        String source = MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"model.zip";
+        String source = resourcePath+MODEL_SAVE_PATH+mainCategory+"/"+modelName+"/"+modelFunction+"/"+"model.zip";
         String filePath = targetPath+"model.zip";
         try {
             FileInputStream fis = new FileInputStream(new File(source));
@@ -382,7 +385,7 @@ public class AlgorithmManagementService {
         }
         tensorflowConfigGenerator.addTail();
 
-        String path = TENSORFLOW_SERVER_PATH+"models.config";
+        String path = resourcePath+TENSORFLOW_SERVER_PATH+"models.config";
         byte[] strToBytes = tensorflowConfigGenerator.output().getBytes();
         try {
             FileOutputStream fos = new FileOutputStream(new File(path), false);

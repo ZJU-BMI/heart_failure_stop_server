@@ -26,6 +26,8 @@ public class MachineLearningDataPrepareService {
 
     @Value(value="${app.machineLearningModelRoot}")
     private String root;
+    private String resourcePath = System.getProperty("user.dir")+"/src/main/resources";
+
 
     @Autowired
     public MachineLearningDataPrepareService(DiagnosisRepository diagnosisRepository, LabTestRepository labTestRepository,
@@ -53,7 +55,7 @@ public class MachineLearningDataPrepareService {
     public String fetchData(String unifiedPatientID, String hospitalCode, String visitType, String visitID,
                             String modelCategory, String modelName, String modelFunction) throws Exception {
 
-        String folder = root+modelCategory+"/"+modelName+"/"+modelFunction+"/";
+        String folder = resourcePath+root+modelCategory+"/"+modelName+"/"+modelFunction+"/";
 
         // 当输入相应请求时，返回该病人之前的所有数据（这里可能会多传很多不需要的信息，留待以后优化）
         List<FourElementTuple<String, String, String, Long>> validList=
@@ -61,14 +63,14 @@ public class MachineLearningDataPrepareService {
         String unPreprocessedData = getFullDataFromDatabase(unifiedPatientID, validList);
 
         // 由于数据数量较大，不能直接作为参数传入，因此先暂存一下
-        String fileName = new Date().getTime() +unifiedPatientID+hospitalCode+visitType+visitID;
+        String fileName = String.valueOf(new Date().getTime());
         FileOutputStream output = new FileOutputStream(folder+"preprocess/"+fileName);
         output.write(unPreprocessedData.getBytes());
         output.close();
 
         // 利用外源性py脚本做数据预处理
         // 执行外部Python脚本可能带来效率问题，以后构建微服务解决
-        String command = "python " + folder+"preprocess/data_convert.py " + fileName;
+        String command = "python3 " + folder+"preprocess/data_convert.py " + fileName;
         Process proc = Runtime.getRuntime().exec(command);
         proc.waitFor();
 
@@ -77,7 +79,6 @@ public class MachineLearningDataPrepareService {
         String returnStr = null;
         while ((line = in.readLine()) != null) {
             returnStr = line;
-            break;
         }
         in.close();
 
