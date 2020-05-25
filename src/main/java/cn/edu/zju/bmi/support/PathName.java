@@ -13,6 +13,8 @@ public class PathName {
     public static final String GET_LAB_TEST_INFO = "/getLabTestInfo";
     public static final String GET_MEDICINE_INFO = "/getMedicineInfo";
     public static final String QUERY_WITH_FATHER_QUERY_AND_NEW_CONDITION = "/queryWithFatherQueryAndNewCondition";
+    //请求样本统计
+    public static final String GET_LABELS_INFO = "/getLabelsInfo";
 
     // user info
     public static final String USER_INFO_DATA = "/backend/data/userInfo";

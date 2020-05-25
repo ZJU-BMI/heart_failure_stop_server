@@ -122,4 +122,14 @@ public class GroupAnalysisController {
     ) throws Exception {
         return groupAnalysisService.getMedicine(filter, userName, queryID);
     }
+
+    //增加请求样本统计的url
+    @PostMapping(value = PathName.GET_LABELS_INFO)
+    public LabelsInfo getLabelsInfo(
+            @RequestParam(ParameterName.FILTER) String filter,
+            @RequestParam(ParameterName.QUERY_ID) String queryID,
+            @RequestParam(ParameterName.USER_NAME) String userName
+    ) throws Exception {
+        return groupAnalysisService.getLabelsInfo(filter, userName, queryID);
+    }
 }

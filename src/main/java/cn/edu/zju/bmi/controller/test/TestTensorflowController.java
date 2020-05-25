@@ -37,6 +37,7 @@ public class TestTensorflowController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
+        //exchange方法可以指定请求的http类型
         HttpEntity<String> entity = new HttpEntity<>(requestBodyString, headers);
 
         String url = "http://localhost:8501/v1/models/mnist:predict";

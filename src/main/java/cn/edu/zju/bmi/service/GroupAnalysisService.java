@@ -236,6 +236,7 @@ public class GroupAnalysisService {
             String hospitalCode = visitInfoForGroupAnalysis.getHospitalCode();
             String visitType = visitInfoForGroupAnalysis.getVisitType();
             String visitID = visitInfoForGroupAnalysis.getVisitID();
+            //联合id
             String unifiedVisitID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
             if(!labTestMap.containsKey(unifiedVisitID)){
                 labTestMap.put(unifiedVisitID, new HashMap<>());
@@ -245,9 +246,12 @@ public class GroupAnalysisService {
                     findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(unifiedPatientID,
                             visitID, visitType, hospitalCode);
             for (LabTest labTest : labTestList) {
+                //检查项编码，肌酐=302023
                 String labTestCode = labTest.getLabTestItemCode();
+                //检查检验时间
                 Date labTestTime = labTest.getExecuteDate();
                 String result = labTest.getResult();
+                //labTestCode：检验编码，对应数据库中的lab_test_item_code
                 if(codingServices.getLabTestCodeInfo(labTestCode).size()==0){continue;}
 
                 // 必须存在可用结果才可入选
@@ -267,11 +271,15 @@ public class GroupAnalysisService {
         // 整理得到最终结果
         // Element Tuple中，前半部分为平均值，后半部分为有效数据数量
         // 如果是数值型，就记录平均值，标准差和缺失率
+
+        //labTestMap的key是unifiedVisitID，嵌套的key是labTestCode
+        //TwoElementTuple->labTestTime, resultDouble
         Map<String, ArrayList<Double>> labTestResultMap = new HashMap<>();
         for(String unifiedVisitID: labTestMap.keySet()){
             Map<String, TwoElementTuple<Date, Double>> map = labTestMap.get(unifiedVisitID);
             for(String code: map.keySet()){
                 if(!labTestResultMap.containsKey(code)){labTestResultMap.put(code, new ArrayList<>());}
+                //添加resultDouble,对每一种code——检查项目，存储所有的结果
                 labTestResultMap.get(code).add(map.get(code).getB());
             }
         }
@@ -284,12 +292,137 @@ public class GroupAnalysisService {
             double std = 0;
             for(Double num:codeResultList){std = std+(avg-num)*(avg-num);}
             std = Math.sqrt(std/codeResultList.size());
+            //
             double missingRate = 1-((double)codeResultList.size())/cachePool.getContent(id).size();
             list.add(new LabTestStatisticItem(code, avg, std, missingRate));
         }
         list.sort(Comparator.comparingDouble(LabTestStatisticItem::getMissingRate));
         return list;
     }
+
+    //添加接口，得到某个患者的所有记录
+    public LabelsInfo getLabelsInfo(String filter, String userName, String queryID) throws Exception{
+        String id = userName+"_"+queryID;
+        Map<String, List<TwoElementTuple<Date, Double>>> labTestSrc = new HashMap<>();
+        if(!cachePool.contains(id)){
+            List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
+            List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
+            cachePool.add(id, visitInfoForGroupAnalysisList);
+        }
+
+        //记录患者的所有记录
+        for (VisitInfoForGroupAnalysis visitInfoForGroupAnalysis:cachePool.getContent(id)){
+            String unifiedPatientID = visitInfoForGroupAnalysis.getUnifiedPatientID();
+            String hospitalCode = visitInfoForGroupAnalysis.getHospitalCode();
+            String visitType = visitInfoForGroupAnalysis.getVisitType();
+            String visitID = visitInfoForGroupAnalysis.getVisitID();
+            //联合id
+            String unifiedVisitID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+            if(!labTestSrc.containsKey(unifiedVisitID)){
+                labTestSrc.put(unifiedVisitID, new ArrayList<>());
+            }
+
+            List<LabTest> labTestList = labTestRepository.
+                    findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(unifiedPatientID,
+                            visitID, visitType, hospitalCode);
+            for (LabTest labTest:labTestList){
+                String labTestCode = labTest.getLabTestItemCode();
+                if (!labTestCode.equals("302023")){
+                    continue;
+                }
+                //检查检验时间
+                Date labTestTime = labTest.getExecuteDate();
+                String result = labTest.getResult();
+                //labTestCode：检验编码，对应数据库中的lab_test_item_code
+                if(codingServices.getLabTestCodeInfo(labTestCode).size()==0){continue;}
+
+                //结果可用
+                double resultDouble = 0;
+                try {
+                    resultDouble = Double.parseDouble(result);
+                }catch (Exception e){
+                    continue;
+                }
+
+                if (labTestSrc.get(unifiedPatientID) == null){
+                    List<TwoElementTuple<Date, Double>> list = new ArrayList<>();
+                    list.add(new TwoElementTuple<>(labTestTime, resultDouble));
+                    labTestSrc.put(unifiedPatientID, list);
+                }else{
+                    List<TwoElementTuple<Date, Double>> list = labTestSrc.get(unifiedPatientID);
+                    list.add(new TwoElementTuple<>(labTestTime, resultDouble));
+                    labTestSrc.put(unifiedPatientID, list);
+                }
+
+            }
+
+            if(labTestList.size() > 0){
+                if (labTestSrc.get(unifiedPatientID) != null){
+                    List<TwoElementTuple<Date, Double>> list = labTestSrc.get(unifiedPatientID);
+                    list.sort(Comparator.comparing(TwoElementTuple::getA));
+                    labTestSrc.put(unifiedPatientID, list);
+                }
+            }
+        }
+        //以上代码已经完成了所有患者对应的时间以及src记录
+
+        //以下部分就是计算AKI
+        int posi = 0, nega = 0;
+        if (labTestSrc.size() > 0){
+            for (String key:labTestSrc.keySet()){
+                List<TwoElementTuple<Date, Double>> list = labTestSrc.get(key);
+                if (list.size() == 0){
+                    continue;
+                }
+                //假设时间都是这种格式："yyyy-MM-dd HH:mm:ss"
+                for (int i = 1;i<list.size();i++){
+                    Date day2 = list.get(i).getA();
+                    Double res2 = list.get(i).getB();
+
+                    //是否48小时内上升26.5
+                    boolean flag = false;
+
+                    //找出7天内最小的那个值
+                    double min = Integer.MAX_VALUE;
+                    //记录48小时内的那个参考值
+                    double in2 = 0;
+                    for (int j = i-1;j>=1;j--){
+                        if (i <= j){
+                            break;
+                        }
+                        Date day1 = list.get(i-j).getA();
+                        Double res1 = list.get(i-j).getB();
+
+                        //48小时内上升26.5
+                        if ((day2.getTime() - day1.getTime())/(1000*60*60) == 2){
+                            if (res2 - res1 >= 26.5){
+                                flag = true;
+                                posi++;
+                                break;
+                            }
+                        }
+
+                        if ((day2.getTime()-day1.getTime())/(1000*60*60) > 7){
+                            break;
+                        }
+                        min = Math.min(min, res1);
+                    }
+                    if (flag){
+                        break;
+                    }else {
+                        if (res2 >= min*1.5){
+                            posi++;
+                        }else{
+                            nega++;
+                        }
+                    }
+                }
+            }
+        }
+
+        return new LabelsInfo(posi, nega);
+    }
+
 
     public List<DiagnosisStatisticItem> getDiagnosis(String filter, String userName, String queryID, String type
         ) throws Exception{
@@ -478,10 +611,12 @@ public class GroupAnalysisService {
     private List<VisitInfoForGroupAnalysis> getVisitInfoForGroupAnalysis(List<VisitIdentifier> targetList){
         List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = new ArrayList<>();
         for(VisitIdentifier visitIdentifier: targetList){
+            //patient_id
             String unifiedPatientID = visitIdentifier.getUnifiedPatientID();
             String visitID = visitIdentifier.getVisitID();
             String hospitalCode = visitIdentifier.getHospitalCode();
             String visitType = visitIdentifier.getVisitType();
+            //以上信息联合起来得到的id
             String id = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
 
             // 要求targetList必须能在几个map中都能找到
