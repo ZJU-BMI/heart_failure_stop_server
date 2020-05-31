@@ -12,6 +12,9 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 
 @Service
 public class MachineLearningDataPrepareService {
@@ -26,7 +29,7 @@ public class MachineLearningDataPrepareService {
 
     @Value(value="${app.machineLearningModelRoot}")
     private String root;
-    private String resourcePath = System.getProperty("user.dir")+"/src/main/resources";
+    private String resourcePath = System.getProperty("user.dir")+"\\src\\main\\resources";
 
 
     @Autowired
@@ -52,10 +55,13 @@ public class MachineLearningDataPrepareService {
         return getFullDataFromDatabase(unifiedPatientID, validList);
     }
 
+    //这个就是前端控制器请求数据调用的方法，执行预处理py文件，把返回的string转成json
     public String fetchData(String unifiedPatientID, String hospitalCode, String visitType, String visitID,
                             String modelCategory, String modelName, String modelFunction) throws Exception {
+//    public JSONObject fetchData(String unifiedPatientID, String hospitalCode, String visitType, String visitID,
+//                            String modelCategory, String modelName, String modelFunction) throws Exception {
 
-        String folder = resourcePath+root+modelCategory+"/"+modelName+"/"+modelFunction+"/";
+        String folder = resourcePath+root+modelCategory+"\\"+modelName+"\\"+modelFunction+"\\";
 
         // 当输入相应请求时，返回该病人之前的所有数据（这里可能会多传很多不需要的信息，留待以后优化）
         List<FourElementTuple<String, String, String, Long>> validList=
@@ -64,26 +70,48 @@ public class MachineLearningDataPrepareService {
 
         // 由于数据数量较大，不能直接作为参数传入，因此先暂存一下
         String fileName = String.valueOf(new Date().getTime());
-        FileOutputStream output = new FileOutputStream(folder+"preprocess/"+fileName);
+        FileOutputStream output = new FileOutputStream(folder+"preprocess\\"+fileName);
         output.write(unPreprocessedData.getBytes());
         output.close();
 
         // 利用外源性py脚本做数据预处理
         // 执行外部Python脚本可能带来效率问题，以后构建微服务解决
-        String command = "python3 " + folder+"preprocess/data_convert.py " + fileName;
-        Process proc = Runtime.getRuntime().exec(command);
-        proc.waitFor();
+//        String command = "python " + folder+"preprocess\\data_convert.py " + fileName;
+//
+//        //卡死
+//        Process proc = Runtime.getRuntime().exec(command);
+//        proc.waitFor();
 
-        BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-        String line;
-        String returnStr = null;
-        while ((line = in.readLine()) != null) {
-            returnStr = line;
+        //得到运行输出
+//        BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+//        String line;
+//        String returnStr = null;
+//        while ((line = in.readLine()) != null) {
+//            returnStr = line;
+//        }
+//        in.close();
+
+
+        //测试成功
+//        String folder = "G:\\GAN-System\\heart_failure_stop_server\\src\\main\\resources\\machineLearningModel\\riskAssessment\\test\\test\\";
+//        String fileName = "1590669790840";
+
+        String[] cmd = new String[] { "python", folder+"preprocess\\data_convert.py ", fileName};
+        Process p = Runtime.getRuntime().exec(cmd);  //执行py文件
+        BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
+        StringBuilder buffer = new StringBuilder();
+        String line = null;
+        while ((line = in.readLine()) != null){
+
+            buffer.append(line);
         }
+        p.waitFor();
+        String returnStr = buffer.toString();
         in.close();
+        System.out.println(returnStr);
 
         //用完删除数据文件
-        Files.delete(Paths.get(folder+"preprocess/"+fileName));
+        Files.delete(Paths.get(folder+"preprocess\\"+fileName));
         return returnStr;
     }
 
@@ -94,6 +122,7 @@ public class MachineLearningDataPrepareService {
                 "basicInfo", "visitInfo", "medicine", "operation", "labTest",
                 "exam", "vitalSign", "diagnosis"};
 
+        //request是一个JSON对象
         JSONObject request = new JSONObject();
 
         // for multiple Visit, return in JSON string
@@ -110,16 +139,16 @@ public class MachineLearningDataPrepareService {
             singleVisitRequest.put(ParameterName.VISIT_ID, visitID);
             singleVisitRequest.put(ParameterName.UNIFIED_PATIENT_ID, unifiedPatientID);
 
-            // 此处的
             request.put(String.valueOf(globalAdmissionTime), singleVisitRequest);
         }
         return request.toString();
     }
 
+    //
     private JSONObject getSingleVisitData(String[] featureList, String unifiedPatientID, String hospitalCode,
                                       String visitID, String visitType){
         JSONObject request = new JSONObject();
-
+        //featureType——>数据库表的数据
         for(String featureType : featureList){
             switch (featureType){
                 case "basicInfo": {
@@ -216,6 +245,7 @@ public class MachineLearningDataPrepareService {
             }
         }
 
+        //按入院时间排序的list
         visitList.sort(Comparator.comparing(FourElementTuple::getD));
         return visitList;
     }

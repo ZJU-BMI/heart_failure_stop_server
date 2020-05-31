@@ -29,8 +29,8 @@ public class PathName {
     public static final String INVOKE_MACHINE_LEARNING_SERVICE = "/backend/machineLearning";
     public static final String FETCH_MACHINE_LEARNING_MODEL_DATA = "/getDataForMachineLearningModel";
     public static final String EXECUTE_MACHINE_LEARNING_MODEL = "/executeModel";
-    // only for test
-    public static final String FETCH_UN_PREPROCESSED__MACHINE_LEARNING_MODEL_DATA = "/getUnPreprocessedDataForMachineLearningModel";
+    // only for test，得到json数据
+    public static final String FETCH_UN_PREPROCESSED_MACHINE_LEARNING_MODEL_DATA = "/getUnPreprocessedDataForMachineLearningModel";
 
     // Auth
     public static final String AUTH = "/backend/authentic";

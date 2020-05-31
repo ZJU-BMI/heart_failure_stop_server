@@ -310,6 +310,9 @@ public class AlgorithmManagementService {
             // Step 2
             updateTensorflowModelConfigFile();
         }
+        else if (platform.equals(ParameterName.PYTORCH)){
+            moveAndUnCompressTensorflowModelFile(mainCategory, modelName, modelFunction);
+        }
         else{
             //此处在未来也可以添加支持其它平台(如Pytorch)的接口
             System.out.println("To Be Done");

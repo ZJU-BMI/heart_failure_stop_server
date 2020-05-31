@@ -23,6 +23,7 @@ public class ParameterName {
     public static final String MODEL_DOC = "modelDoc";
 
     public static final String TENSORFLOW = "Tensorflow";
+    public static final String PYTORCH = "Pytorch";
 
     public static final String STATE_CONTENT = "stateContent";
     public static final String USER_ID = "userID";
