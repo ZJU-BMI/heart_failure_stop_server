@@ -71,9 +71,6 @@ public class MachineLearningModelController {
             @RequestParam(ParameterName.MODEL_CATEGORY) String modelCategory,
             @RequestParam(ParameterName.MODEL_FUNCTION) String modelFunction,
             @RequestParam(ParameterName.MODEL_INPUT) String input) throws IOException, InterruptedException {
-//            假设去掉input
-//            ) throws IOException, InterruptedException {
-
 
         //说明已经进来断点这里了
         String platform = algorithmManagementService.getModelInfo(modelCategory, modelName, modelFunction).getPlatform();
@@ -106,15 +103,30 @@ public class MachineLearningModelController {
                     .writeValueAsString(values);
 
             HttpClient client = HttpClient.newHttpClient();
-            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                    .uri(URI.create("http://127.0.0.1:5000/models"))
-                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(requestBody))
-                    .build();
 
-            HttpResponse<String> response = client.send(request,
-                    HttpResponse.BodyHandlers.ofString());
+            try{
+                java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                        .uri(URI.create("http://127.0.0.1:5000/models"))
+                        .POST(java.net.http.HttpRequest.BodyPublishers.ofString(requestBody))
+                        .build();
 
-            return response.body();
+                HttpResponse<String> response = client.send(request,
+                        HttpResponse.BodyHandlers.ofString());
+
+                System.out.println(response.body());
+                double result = Double.parseDouble(response.body());
+                StringBuilder s = new StringBuilder();
+                s.append("{\n \"outputs\": [\n [\n ");
+                s.append(result);
+                s.append("\n ]\n ]\n }");
+                System.out.println(s.toString());
+                return s.toString();
+
+//                return response.body();
+            }catch (Exception e){
+                return "{\n \"outputs\": [\n [\n 0\n ]\n ]\n }";
+            }
+
 
 
         }else{
