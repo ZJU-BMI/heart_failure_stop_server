@@ -1,0 +1,5 @@
+cd IdeaProjects/heart_failure_stop_server/src/main/resources/serving
+docker run -t --rm -p 8501:8501 \
+	-v "$(pwd)/models/:/models/" tensorflow/serving \
+	--model_config_file=/models/models.config \
+	--model_config_file_poll_wait_seconds=30
