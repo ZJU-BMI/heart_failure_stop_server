@@ -300,17 +300,20 @@ public class GroupAnalysisService {
         return list;
     }
 
-    //添加接口，得到某个患者的所有记录
+    //添加接口，得到某个患者的所有记录，计算出AKI阳性和阴性样本分布
     public LabelsInfo getLabelsInfo(String filter, String userName, String queryID) throws Exception{
         String id = userName+"_"+queryID;
         Map<String, List<TwoElementTuple<Date, Double>>> labTestSrc = new HashMap<>();
+        //存储缓存查询
         if(!cachePool.contains(id)){
             List<VisitIdentifier> targetList =  parseFilterAndSearchVisit(filter);
             List<VisitInfoForGroupAnalysis> visitInfoForGroupAnalysisList = getVisitInfoForGroupAnalysis(targetList);
             cachePool.add(id, visitInfoForGroupAnalysisList);
         }
 
-        //记录患者的所有记录
+        //记录患者的所有记录,20-30岁的人总共有1531个人
+        System.out.println(cachePool.getContent(id).size());
+        //统计同一个病人的情况，一个病人有多个visitid
         for (VisitInfoForGroupAnalysis visitInfoForGroupAnalysis:cachePool.getContent(id)){
             String unifiedPatientID = visitInfoForGroupAnalysis.getUnifiedPatientID();
             String hospitalCode = visitInfoForGroupAnalysis.getHospitalCode();
@@ -318,6 +321,9 @@ public class GroupAnalysisService {
             String visitID = visitInfoForGroupAnalysis.getVisitID();
             //联合id
             String unifiedVisitID = unifiedPatientID+"_"+hospitalCode+"_"+visitType+"_"+visitID;
+//            String unifiedPatientID = visitInfoForGroupAnalysis.getUnifiedPatientID();
+//            //联合id
+//            String unifiedVisitID = unifiedPatientID;
             if(!labTestSrc.containsKey(unifiedVisitID)){
                 labTestSrc.put(unifiedVisitID, new ArrayList<>());
             }
@@ -325,6 +331,7 @@ public class GroupAnalysisService {
             List<LabTest> labTestList = labTestRepository.
                     findByKeyUnifiedPatientIDAndKeyVisitIDAndKeyVisitTypeAndKeyHospitalCode(unifiedPatientID,
                             visitID, visitType, hospitalCode);
+//            List<LabTest> labTestList = labTestRepository.findByKeyUnifiedPatientID(unifiedVisitID);
             for (LabTest labTest:labTestList){
                 String labTestCode = labTest.getLabTestItemCode();
                 if (!labTestCode.equals("302023")){
@@ -344,49 +351,51 @@ public class GroupAnalysisService {
                     continue;
                 }
 
-                if (labTestSrc.get(unifiedPatientID) == null){
+                if (labTestSrc.get(unifiedVisitID) == null){
                     List<TwoElementTuple<Date, Double>> list = new ArrayList<>();
                     list.add(new TwoElementTuple<>(labTestTime, resultDouble));
-                    labTestSrc.put(unifiedPatientID, list);
+                    labTestSrc.put(unifiedVisitID, list);
                 }else{
-                    List<TwoElementTuple<Date, Double>> list = labTestSrc.get(unifiedPatientID);
+                    List<TwoElementTuple<Date, Double>> list = labTestSrc.get(unifiedVisitID);
                     list.add(new TwoElementTuple<>(labTestTime, resultDouble));
-                    labTestSrc.put(unifiedPatientID, list);
+                    labTestSrc.put(unifiedVisitID, list);
                 }
 
             }
 
             if(labTestList.size() > 0){
-                if (labTestSrc.get(unifiedPatientID) != null){
-                    List<TwoElementTuple<Date, Double>> list = labTestSrc.get(unifiedPatientID);
+                if (labTestSrc.get(unifiedVisitID) != null){
+                    List<TwoElementTuple<Date, Double>> list = labTestSrc.get(unifiedVisitID);
                     list.sort(Comparator.comparing(TwoElementTuple::getA));
-                    labTestSrc.put(unifiedPatientID, list);
+                    labTestSrc.put(unifiedVisitID, list);
                 }
             }
         }
         //以上代码已经完成了所有患者对应的时间以及src记录
 
         //以下部分就是计算AKI
+        System.out.println(labTestSrc.size());
         int posi = 0, nega = 0;
-        if (labTestSrc.size() > 0){
+        //计算aki的标签，必须有2天以上的数据
+        if (labTestSrc.size() > 1){
+            //key是unifiedpatientid
             for (String key:labTestSrc.keySet()){
                 List<TwoElementTuple<Date, Double>> list = labTestSrc.get(key);
                 if (list.size() == 0){
                     continue;
                 }
                 //假设时间都是这种格式："yyyy-MM-dd HH:mm:ss"
+                //AKI的标签是是否48小时内上升26.5，或者7天内是最小值的1.5倍，因此从第二个非空下标开始算
+
+                //是否48小时内上升26.5
+                boolean flag = false;
                 for (int i = 1;i<list.size();i++){
                     Date day2 = list.get(i).getA();
                     Double res2 = list.get(i).getB();
 
-                    //是否48小时内上升26.5
-                    boolean flag = false;
-
                     //找出7天内最小的那个值
                     double min = Integer.MAX_VALUE;
-                    //记录48小时内的那个参考值
-                    double in2 = 0;
-                    for (int j = i-1;j>=1;j--){
+                    for (int j = i-1;j>=0;j--){
                         if (i <= j){
                             break;
                         }
@@ -409,17 +418,20 @@ public class GroupAnalysisService {
                     }
                     if (flag){
                         break;
-                    }else {
-                        if (res2 >= min*1.5){
-                            posi++;
-                        }else{
-                            nega++;
-                        }
+                    }else if (res2 >= min*1.5){
+                        flag = true;
+                        posi++;
+                        break;
                     }
                 }
+                if (!flag){
+                    nega++;
+                }
+
             }
         }
 
+        System.out.println("posi" + posi + "," + "nega" + nega);
         return new LabelsInfo(posi, nega);
     }
 
