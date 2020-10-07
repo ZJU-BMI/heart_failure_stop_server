@@ -74,27 +74,7 @@ public class MachineLearningDataPrepareService {
         output.write(unPreprocessedData.getBytes());
         output.close();
 
-        // 利用外源性py脚本做数据预处理
-        // 执行外部Python脚本可能带来效率问题，以后构建微服务解决
-//        String command = "python " + folder+"preprocess\\data_convert.py " + fileName;
-//
-//        //卡死
-//        Process proc = Runtime.getRuntime().exec(command);
-//        proc.waitFor();
 
-        //得到运行输出
-//        BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-//        String line;
-//        String returnStr = null;
-//        while ((line = in.readLine()) != null) {
-//            returnStr = line;
-//        }
-//        in.close();
-
-
-        //测试成功
-//        String folder = "G:\\GAN-System\\heart_failure_stop_server\\src\\main\\resources\\machineLearningModel\\riskAssessment\\test\\test\\";
-//        String fileName = "1590669790840";
 
         String[] cmd = new String[] { "python", folder+"preprocess\\data_convert.py ", fileName};
         Process p = Runtime.getRuntime().exec(cmd);  //执行py文件
