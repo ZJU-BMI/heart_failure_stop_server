@@ -82,7 +82,6 @@ public class MachineLearningDataPrepareService {
         StringBuilder buffer = new StringBuilder();
         String line = null;
         while ((line = in.readLine()) != null){
-
             buffer.append(line);
         }
         p.waitFor();

@@ -121,14 +121,10 @@ public class MachineLearningModelController {
                 s.append("\n ]\n ]\n }");
                 System.out.println(s.toString());
                 return s.toString();
-
 //                return response.body();
             }catch (Exception e){
                 return "{\n \"outputs\": [\n [\n 0\n ]\n ]\n }";
             }
-
-
-
         }else{
 //             prepare for pytorch and sklearn, To Be Done
             String url = tensorflowAddress + modelCategory + "/" + modelName + "/" + modelFunction + ":predict";
